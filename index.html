@@ -239,7 +239,15 @@ function join(){
     if(first) sys(names[p] + ' ist beigetreten.');
     updateStatus(); renderTheirs();
   });
-  onChat((t, p) => addMsg(String(t), nameOf(p), false));
+  const seen = new Set();
+  onChat((m, p) => {
+    // Nachrichten werden über verbundene Mitglieder weitergereicht, damit auch
+    // Geräte ohne Direktverbindung zueinander sich über einen Dritten erreichen.
+    if(!m || typeof m !== 'object' || !m.id || seen.has(m.id)) return;
+    seen.add(m.id);
+    addMsg(String(m.t), String(m.n || nameOf(p)).slice(0, 24), false);
+    sendChat(m);
+  });
   onOffers((list, p) => { theirOffers[p] = Array.isArray(list) ? list : []; renderTheirs(); });
   onWant(async (id, p) => {
     const f = myFiles.get(id);
@@ -266,7 +274,9 @@ function join(){
     e.preventDefault();
     const t = $('text').value.trim();
     if(!t) return;
-    sendChat(t);
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    seen.add(id);
+    sendChat({id, n: myName, t});
     addMsg(t, myName, true);
     $('text').value = '';
   };
