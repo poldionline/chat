@@ -75,7 +75,7 @@
 <div id="app">
   <div id="chatcol">
     <header>
-      <div><b id="gname"></b><div id="status">Verbinde …</div></div>
+      <div><b id="gname"></b> <small style="color:var(--mute)">v5</small><div id="status">Verbinde …</div></div>
       <button class="sec" id="leave">Verlassen</button>
     </header>
     <div id="msgs"></div>
@@ -243,6 +243,7 @@ function join(){
   onChat((m, p) => {
     // Nachrichten werden über verbundene Mitglieder weitergereicht, damit auch
     // Geräte ohne Direktverbindung zueinander sich über einen Dritten erreichen.
+    if(typeof m === 'string'){ addMsg(m, nameOf(p), false); return; } // Nachricht von einer alten Version
     if(!m || typeof m !== 'object' || !m.id || seen.has(m.id)) return;
     seen.add(m.id);
     addMsg(String(m.t), String(m.n || nameOf(p)).slice(0, 24), false);
