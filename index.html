@@ -5,34 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SwapChat</title>
 <style>
-  :root{--bg:#0f1419;--panel:#1a212b;--line:#2a3441;--text:#e6edf3;--mute:#8b98a8;--acc:#3ea6ff;--me:#1f4e79;--ok:#3fb950;--err:#f85149}
+  :root{--bg:#0f1419;--panel:#1a212b;--line:#2a3441;--text:#e6edf3;--mute:#8b98a8;--acc:#3ea6ff;--me:#1f4e79;--err:#f85149}
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
   body{background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
   button,input{font:inherit;color:inherit}
   input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
-  input:focus{outline:2px solid var(--acc);border-color:transparent}
   button{background:var(--acc);color:#04121f;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
   button.sec{background:var(--line);color:var(--text)}
-  button:disabled{opacity:.5;cursor:default}
   #login{max-width:380px;margin:10vh auto;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;gap:12px}
-  #login h1{margin:0 0 4px;font-size:22px}
+  #login h1{margin:0;font-size:22px}
   #login p{margin:0;color:var(--mute);font-size:13px}
-  #app{display:none;height:100%;grid-template-columns:1fr 320px}
+  #err{color:var(--err);font-size:13px;min-height:1em}
+  #app{display:none;height:100%;grid-template-columns:1fr 300px}
   #chatcol{display:flex;flex-direction:column;min-width:0;height:100%}
   header{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
-  header b{font-size:16px}
   #status{font-size:12px;color:var(--mute)}
   #msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-  .m{max-width:75%;padding:8px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);align-self:flex-start;word-wrap:break-word;overflow-wrap:anywhere}
+  .m{max-width:75%;padding:8px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere}
   .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
-  .m .n{font-size:11px;color:var(--mute);margin-bottom:2px}
+  .m .n{font-size:11px;color:var(--mute)}
   .sys{align-self:center;color:var(--mute);font-size:12px}
-  .sys a{color:var(--ok)}
+  .sys a{color:var(--acc)}
   form{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
-  aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0;height:100%}
-  aside h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:0;padding:14px 14px 6px}
-  .list{overflow-y:auto;padding:0 10px 10px}
+  aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0;height:100%;overflow-y:auto}
+  aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:0;padding:14px 14px 6px}
+  .list{padding:0 10px 10px}
   .f{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:8px;margin-top:6px;background:var(--bg)}
   .f .i{flex:1;min-width:0}
   .f .i div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -41,9 +39,7 @@
   .bar{height:3px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden}
   .bar i{display:block;height:100%;width:0;background:var(--acc)}
   .empty{color:var(--mute);font-size:13px;padding:6px 4px}
-  #drop{margin:10px;padding:14px;border:2px dashed var(--line);border-radius:10px;text-align:center;color:var(--mute);cursor:pointer;font-size:13px}
-  #drop.over{border-color:var(--acc);color:var(--text)}
-  #err{color:var(--err);font-size:13px;min-height:1em}
+  #drop{margin:6px 10px;padding:14px;border:2px dashed var(--line);border-radius:10px;text-align:center;color:var(--mute);cursor:pointer;font-size:13px}
   @media(max-width:760px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr 42vh}
     aside{border-left:0;border-top:1px solid var(--line)}
@@ -55,27 +51,19 @@
 
 <div id="login">
   <h1>SwapChat</h1>
-  <p>Chat und Dateitausch in passwortgeschützten Gruppen. Kein Konto, kein Server – die Teilnehmer verbinden sich direkt miteinander.</p>
+  <p>Chat und Dateitausch in passwortgeschützten Gruppen. Kein Konto, kein Server.</p>
   <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
   <input id="group" placeholder="Gruppenname" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
   <input id="pw" type="password" placeholder="Gruppenpasswort" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-  <details style="font-size:13px;color:var(--mute)">
-    <summary style="cursor:pointer">Relay-Server (TURN) für schwierige Netze</summary>
-    <p style="margin:8px 0">Ohne Eingabe wird ein öffentlicher Gratis-Relay genutzt (kann ausfallen). Zuverlässiger: kostenloses Konto bei <b>metered.ca</b> (Open Relay, 20 GB/Monat), dort „TURN Credentials" anlegen und hier eintragen. Wird nur in deinem Browser gespeichert.</p>
-    <input id="tuser" placeholder="TURN-Benutzername (optional)" autocomplete="off" style="margin-bottom:8px">
-    <input id="tcred" type="password" placeholder="TURN-Passwort (optional)" autocomplete="off">
-  </details>
   <div id="err"></div>
   <button id="join">Beitreten</button>
-  <button class="sec" id="local" type="button">Lokales Netz freischalten (Safari)</button>
-  <button class="sec" id="diag" type="button">Verbindung testen</button>
-  <pre id="diagout" style="margin:0;white-space:pre-wrap;font-size:12px;color:var(--mute)"></pre>
+  <button id="mic" class="sec" type="button">Nur Safari: Netzwerk freischalten</button>
 </div>
 
 <div id="app">
   <div id="chatcol">
     <header>
-      <div><b id="gname"></b> <small style="color:var(--mute)">v6</small><div id="status">Verbinde …</div></div>
+      <div><b id="gname"></b> <small style="color:var(--mute)">v7</small><div id="status">Verbinde …</div></div>
       <button class="sec" id="leave">Verlassen</button>
     </header>
     <div id="msgs"></div>
@@ -86,238 +74,139 @@
   </div>
   <aside>
     <h2>Meine Angebote</h2>
-    <div id="drop">Dateien hierher ziehen oder klicken<br>(andere können sie dann abholen)</div>
+    <div id="drop">Dateien hierher ziehen oder tippen</div>
     <input type="file" id="pick" multiple hidden>
-    <div class="list" id="mine" style="max-height:25%"></div>
+    <div class="list" id="mine"></div>
     <h2>Angebote der Gruppe</h2>
-    <div class="list" id="theirs" style="flex:1"></div>
+    <div class="list" id="theirs"></div>
   </aside>
 </div>
 
 <script type="module">
-import {joinRoom, selfId} from 'https://cdn.jsdelivr.net/npm/trystero@0.21/+esm';
+import {joinRoom} from 'https://cdn.jsdelivr.net/npm/trystero@0.21/+esm';
 
 const $ = id => document.getElementById(id);
-const APP_ID = 'swapchat-github-v1';
-let room, myName = '';
-const names = {};          // peerId -> Name
-const myFiles = new Map(); // id -> File
-const theirOffers = {};    // peerId -> [{id,name,size}]
-const dl = {};             // "peer:id" -> progress element
-
 const fmt = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
-const nameOf = p => names[p] || 'Unbekannt';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
-function addMsg(text, who, me){
-  const d = document.createElement('div');
-  d.className = 'm' + (me ? ' me' : '');
-  const n = document.createElement('div'); n.className = 'n'; n.textContent = who;
-  const t = document.createElement('div'); t.textContent = text;
-  d.append(n, t);
-  push(d);
-}
-function sys(text, node){
-  const d = document.createElement('div'); d.className = 'sys'; d.textContent = text;
-  if(node) d.append(' ', node);
-  push(d);
-}
+const names = {};        // peerId -> Name
+const myFiles = new Map(); // id -> File
+const theirOffers = {};  // peerId -> [{id,name,size}]
+const bars = {};         // "peerId:id" -> Fortschrittsbalken
+let room, myName = '';
+
 function push(el){
   const box = $('msgs');
   const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   box.append(el);
   if(atEnd) box.scrollTop = box.scrollHeight;
 }
-const members = {}; // id -> {n, t}  (auch Mitglieder, die nur über Dritte erreichbar sind)
+function addMsg(text, who, me){
+  const d = document.createElement('div'); d.className = 'm' + (me ? ' me' : '');
+  const n = document.createElement('div'); n.className = 'n'; n.textContent = who;
+  const t = document.createElement('div'); t.textContent = text;
+  d.append(n, t); push(d);
+}
+function sys(text, node){
+  const d = document.createElement('div'); d.className = 'sys'; d.textContent = text;
+  if(node) d.append(' ', node);
+  push(d);
+}
 function updateStatus(){
-  const now = Date.now(), all = {};
-  for(const id in members){
-    if(now - members[id].t > 16000) delete members[id]; else all[id] = members[id].n;
-  }
-  for(const id in names) all[id] = names[id];
-  const list = Object.values(all);
-  const direct = Object.keys(names).length;
+  const list = Object.values(names);
   $('status').textContent = list.length
-    ? `Online (${list.length + 1}): du, ` + list.join(', ') + (list.length > direct ? ' · teils über Dritte' : '')
+    ? `Online (${list.length + 1}): du, ` + list.join(', ')
     : 'Online (1): nur du – warte auf Mitglieder …';
 }
 
-try{
-  $('tuser').value = localStorage.getItem('turn_u') || '';
-  $('tcred').value = localStorage.getItem('turn_c') || '';
-}catch(e){}
-
-$('diag').onclick = async () => {
-  const out = $('diagout'); out.textContent = 'Teste …\n';
-  const log = t => out.textContent += t + '\n';
-  // 1) Relays (WebSocket)
-  for(const url of ['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net']){
-    const ok = await new Promise(res => {
-      let done = false; const fin = v => { if(!done){ done = true; res(v); } };
-      try{ const w = new WebSocket(url); w.onopen = () => { w.close(); fin(true); }; w.onerror = () => fin(false); }
-      catch(e){ fin(false); }
-      setTimeout(() => fin(false), 6000);
-    });
-    log((ok ? '✔ ' : '✘ ') + 'Relay ' + url.replace('wss://',''));
-  }
-  // 2) ICE-Kandidaten
+// Safari gibt lokale Netzwerk-Adressen nur frei, wenn einmal Mikrofonzugriff erlaubt wurde (es wird nichts aufgenommen).
+$('mic').onclick = async () => {
   try{
-    const pc = new RTCPeerConnection({iceServers:[
-      {urls:'stun:stun.l.google.com:19302'},
-      {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443'],username:'openrelayproject',credential:'openrelayproject'}]});
-    pc.createDataChannel('x');
-    const types = new Set();
-    pc.onicecandidate = e => { if(e.candidate){ const m = / typ (\w+)/.exec(e.candidate.candidate); if(m) types.add(m[1]); } };
-    await pc.setLocalDescription(await pc.createOffer());
-    await new Promise(r => setTimeout(r, 5000));
-    pc.close();
-    log('WebRTC-Kandidaten: ' + ([...types].join(', ') || 'keine'));
-    log(types.has('srflx') ? '✔ STUN erreichbar' : '✘ STUN nicht erreichbar');
-    log(types.has('relay') ? '✔ TURN erreichbar' : '✘ TURN nicht erreichbar (Gratis-Relay evtl. down)');
-  }catch(e){ log('✘ WebRTC nicht verfügbar: ' + e.message); }
-  log('Fertig.');
-};
-
-$('local').onclick = async () => {
-  // Safari gibt lokale Netzwerkadressen für WebRTC nur frei, wenn einmal Mikrofonzugriff erlaubt wurde.
-  // Es wird nichts aufgenommen: der Zugriff wird sofort wieder beendet.
-  const b = $('local');
-  try{
-    const st = await navigator.mediaDevices.getUserMedia({audio:true});
+    const st = await navigator.mediaDevices.getUserMedia({audio: true});
     st.getTracks().forEach(t => t.stop());
-    b.textContent = '✔ Freigeschaltet – jetzt beitreten';
-  }catch(e){
-    b.textContent = '✘ Abgelehnt oder nicht möglich';
-  }
+    $('mic').textContent = '✔ Freigeschaltet';
+  }catch(e){ $('mic').textContent = '✘ Nicht möglich'; }
 };
 
 $('join').onclick = join;
 ['name','group','pw'].forEach(i => $(i).addEventListener('keydown', e => { if(e.key === 'Enter') join(); }));
 
 function join(){
-  const name = $('name').value.trim(), group = $('group').value.trim().toLowerCase(), pw = $('pw').value;
+  const name = $('name').value.trim();
+  const group = $('group').value.trim().toLowerCase();
+  const pw = $('pw').value;
   if(!name || !group || !pw){ $('err').textContent = 'Bitte alle drei Felder ausfüllen.'; return; }
   myName = name;
-  // Der Gruppenname wird zur Raum-ID, das Passwort verschlüsselt den Verbindungsaufbau.
-  // Wer ein falsches Passwort nutzt, landet zwar im gleichen Raum, kann aber keine Verbindung aufbauen.
-  const tu = $('tuser').value.trim(), tc = $('tcred').value;
-  try{
-    if(tu && tc){ localStorage.setItem('turn_u', tu); localStorage.setItem('turn_c', tc); }
-  }catch(e){}
-  const iceServers = [
-    {urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478']}
-  ];
-  if(tu && tc){
-    // Eigene kostenlose Metered-Zugangsdaten
-    iceServers.push({
-      urls: [
-        'turn:global.relay.metered.ca:80',
-        'turn:global.relay.metered.ca:80?transport=tcp',
-        'turn:global.relay.metered.ca:443',
-        'turns:global.relay.metered.ca:443?transport=tcp'
-      ],
-      username: tu, credential: tc
-    });
-  }else{
-    // Öffentlicher Gratis-Relay des Open Relay Project (kann ausfallen)
-    iceServers.push({
-      urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443?transport=tcp'],
-      username: 'openrelayproject', credential: 'openrelayproject'
-    });
-  }
-  room = joinRoom({appId: APP_ID, password: pw, rtcConfig: {iceServers}}, 'g:' + group);
 
-  const [sendHello, onHello] = room.makeAction('hello');
-  const [sendChat, onChat]   = room.makeAction('chat');
-  const [sendOffers, onOffers] = room.makeAction('offers');
-  const [sendWant, onWant]   = room.makeAction('want');
-  const [sendPres, onPres]   = room.makeAction('presence');
-  let seq = 0; const lastSeq = {};
-  const announce = () => { sendPres({id: selfId, n: myName, s: ++seq}); updateStatus(); };
-  onPres(m => {
-    if(!m || m.id === selfId || typeof m.s !== 'number') return;
-    if((lastSeq[m.id] || 0) >= m.s) return;
-    lastSeq[m.id] = m.s;
-    const first = !members[m.id] && !names[m.id];
-    members[m.id] = {n: String(m.n).slice(0, 24), t: Date.now()};
-    if(first) sys(members[m.id].n + ' ist online.');
-    sendPres(m);           // weiterreichen
-    updateStatus();
-  });
-  setInterval(announce, 5000);
-  const [sendFile, onFile, onFileProg] = room.makeAction('file');
+  room = joinRoom({appId: 'swapchat-github-v7', password: pw}, 'g:' + group);
 
-  const pushOffers = to => sendOffers(
-    [...myFiles].map(([id, f]) => ({id, name: f.name, size: f.size})), to);
+  const [sendHello, onHello]       = room.makeAction('hello');
+  const [sendChat, onChat]         = room.makeAction('chat');
+  const [sendOffers, onOffers]     = room.makeAction('offers');
+  const [sendWant, onWant]         = room.makeAction('want');
+  const [sendFile, onFile, onProg] = room.makeAction('file');
 
-  room.onPeerJoin(p => { sendHello(myName, p); pushOffers(p); announce(); });
+  const myOfferList = () => [...myFiles].map(([id, f]) => ({id, name: f.name, size: f.size}));
+  const pushOffers = to => sendOffers(myOfferList(), to);
+
+  room.onPeerJoin(p => { sendHello(myName, p); pushOffers(p); });
   room.onPeerLeave(p => {
-    sys(nameOf(p) + ' hat die Gruppe verlassen.');
-    delete names[p]; delete members[p]; delete theirOffers[p];
+    if(names[p]) sys(names[p] + ' hat die Gruppe verlassen.');
+    delete names[p]; delete theirOffers[p];
     renderTheirs(); updateStatus();
   });
+
   onHello((n, p) => {
     const first = !names[p];
     names[p] = String(n).slice(0, 24);
     if(first) sys(names[p] + ' ist beigetreten.');
     updateStatus(); renderTheirs();
   });
-  const seen = new Set();
-  onChat((m, p) => {
-    // Nachrichten werden über verbundene Mitglieder weitergereicht, damit auch
-    // Geräte ohne Direktverbindung zueinander sich über einen Dritten erreichen.
-    if(typeof m === 'string'){ addMsg(m, nameOf(p), false); return; } // Nachricht von einer alten Version
-    if(!m || typeof m !== 'object' || !m.id || seen.has(m.id)) return;
-    seen.add(m.id);
-    addMsg(String(m.t), String(m.n || nameOf(p)).slice(0, 24), false);
-    sendChat(m);
-  });
+
+  onChat((t, p) => addMsg(String(t), names[p] || 'Unbekannt', false));
+
   onOffers((list, p) => { theirOffers[p] = Array.isArray(list) ? list : []; renderTheirs(); });
+
   onWant(async (id, p) => {
     const f = myFiles.get(id);
     if(!f) return;
-    sys(`${nameOf(p)} holt „${f.name}“ ab …`);
+    sys((names[p] || 'Jemand') + ' holt „' + f.name + '“ ab …');
     await sendFile(await f.arrayBuffer(), p, {id, name: f.name, type: f.type});
   });
-  onFileProg((pct, p, meta) => {
-    const bar = dl[p + ':' + (meta && meta.id)];
-    if(bar) bar.style.width = Math.round(pct * 100) + '%';
-  });
-  onFile((data, p, meta) => {
-    const blob = new Blob([data], {type: meta.type || 'application/octet-stream'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = meta.name; a.textContent = '↓ ' + meta.name;
-    sys(`Datei von ${nameOf(p)} erhalten:`, a);
-    a.click();
-    const bar = dl[p + ':' + meta.id]; if(bar) bar.style.width = '100%';
+
+  onProg((pct, p, meta) => {
+    const b = bars[p + ':' + (meta && meta.id)];
+    if(b) b.style.width = Math.round(pct * 100) + '%';
   });
 
-  // Chat senden
+  onFile((data, p, meta) => {
+    const url = URL.createObjectURL(new Blob([data], {type: meta.type || 'application/octet-stream'}));
+    const a = document.createElement('a');
+    a.href = url; a.download = meta.name; a.textContent = '↓ ' + meta.name;
+    sys('Datei von ' + (names[p] || 'Unbekannt') + ' erhalten:', a);
+    const b = bars[p + ':' + meta.id]; if(b) b.style.width = '100%';
+    a.click();
+  });
+
+  // Chat
   $('form').onsubmit = e => {
     e.preventDefault();
     const t = $('text').value.trim();
     if(!t) return;
-    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    seen.add(id);
-    sendChat({id, n: myName, t});
+    sendChat(t);
     addMsg(t, myName, true);
     $('text').value = '';
   };
 
   // Dateien anbieten
   const addFiles = files => {
-    for(const f of files){
-      const id = (crypto.randomUUID ? crypto.randomUUID()
-                 : Date.now().toString(36) + Math.random().toString(36).slice(2));
-      myFiles.set(id, f);
-    }
+    for(const f of files) myFiles.set(uid(), f);
     renderMine(); pushOffers();
   };
   $('drop').onclick = () => $('pick').click();
   $('pick').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
-  $('drop').ondragover = e => { e.preventDefault(); $('drop').classList.add('over'); };
-  $('drop').ondragleave = () => $('drop').classList.remove('over');
-  $('drop').ondrop = e => { e.preventDefault(); $('drop').classList.remove('over'); addFiles(e.dataTransfer.files); };
+  $('drop').ondragover = e => e.preventDefault();
+  $('drop').ondrop = e => { e.preventDefault(); addFiles(e.dataTransfer.files); };
 
   function renderMine(){
     const box = $('mine'); box.textContent = '';
@@ -333,9 +222,7 @@ function join(){
       row.append(info, b); box.append(row);
     }
   }
-  window.renderMine = renderMine;
 
-  window.renderTheirs = renderTheirs;
   function renderTheirs(){
     const box = $('theirs'); box.textContent = '';
     let any = false;
@@ -345,10 +232,10 @@ function join(){
         const row = document.createElement('div'); row.className = 'f';
         const info = document.createElement('div'); info.className = 'i';
         const nm = document.createElement('div'); nm.textContent = o.name;
-        const sz = document.createElement('small'); sz.textContent = `${fmt(o.size)} · von ${nameOf(p)}`;
+        const sz = document.createElement('small'); sz.textContent = fmt(o.size) + ' · von ' + (names[p] || 'Unbekannt');
         const bar = document.createElement('div'); bar.className = 'bar';
         const fill = document.createElement('i'); bar.append(fill);
-        dl[p + ':' + o.id] = fill;
+        bars[p + ':' + o.id] = fill;
         info.append(nm, sz, bar);
         const b = document.createElement('button'); b.textContent = 'Holen';
         b.onclick = () => { fill.style.width = '2%'; sendWant(o.id, p); };
@@ -357,12 +244,13 @@ function join(){
     }
     if(!any) box.innerHTML = '<div class="empty">Noch keine Angebote in der Gruppe.</div>';
   }
+  window.renderTheirs = renderTheirs;
 
   $('login').style.display = 'none';
   $('app').style.display = 'grid';
   $('gname').textContent = '🔒 ' + group;
   renderMine(); renderTheirs(); updateStatus();
-  sys('Du bist in der Gruppe. Nachrichten werden nicht gespeichert – nur wer online ist, empfängt sie.');
+  sys('Nachrichten werden nicht gespeichert – nur wer online ist, empfängt sie.');
   $('text').focus();
 }
 
