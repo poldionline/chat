@@ -59,6 +59,12 @@
   <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off">
   <input id="group" placeholder="Gruppenname" maxlength="40" autocomplete="off">
   <input id="pw" type="password" placeholder="Gruppenpasswort" autocomplete="off">
+  <details style="font-size:13px;color:var(--mute)">
+    <summary style="cursor:pointer">Relay-Server (TURN) für schwierige Netze</summary>
+    <p style="margin:8px 0">Ohne Eingabe wird ein öffentlicher Gratis-Relay genutzt (kann ausfallen). Zuverlässiger: kostenloses Konto bei <b>metered.ca</b> (Open Relay, 20 GB/Monat), dort „TURN Credentials" anlegen und hier eintragen. Wird nur in deinem Browser gespeichert.</p>
+    <input id="tuser" placeholder="TURN-Benutzername (optional)" autocomplete="off" style="margin-bottom:8px">
+    <input id="tcred" type="password" placeholder="TURN-Passwort (optional)" autocomplete="off">
+  </details>
   <div id="err"></div>
   <button id="join">Beitreten</button>
 </div>
@@ -124,6 +130,11 @@ function updateStatus(){
                               : 'Noch niemand sonst da – warte auf Mitglieder …';
 }
 
+try{
+  $('tuser').value = localStorage.getItem('turn_u') || '';
+  $('tcred').value = localStorage.getItem('turn_c') || '';
+}catch(e){}
+
 $('join').onclick = join;
 ['name','group','pw'].forEach(i => $(i).addEventListener('keydown', e => { if(e.key === 'Enter') join(); }));
 
@@ -133,7 +144,32 @@ function join(){
   myName = name;
   // Der Gruppenname wird zur Raum-ID, das Passwort verschlüsselt den Verbindungsaufbau.
   // Wer ein falsches Passwort nutzt, landet zwar im gleichen Raum, kann aber keine Verbindung aufbauen.
-  room = joinRoom({appId: APP_ID, password: pw}, 'g:' + group);
+  const tu = $('tuser').value.trim(), tc = $('tcred').value;
+  try{
+    if(tu && tc){ localStorage.setItem('turn_u', tu); localStorage.setItem('turn_c', tc); }
+  }catch(e){}
+  const iceServers = [
+    {urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478']}
+  ];
+  if(tu && tc){
+    // Eigene kostenlose Metered-Zugangsdaten
+    iceServers.push({
+      urls: [
+        'turn:global.relay.metered.ca:80',
+        'turn:global.relay.metered.ca:80?transport=tcp',
+        'turn:global.relay.metered.ca:443',
+        'turns:global.relay.metered.ca:443?transport=tcp'
+      ],
+      username: tu, credential: tc
+    });
+  }else{
+    // Öffentlicher Gratis-Relay des Open Relay Project (kann ausfallen)
+    iceServers.push({
+      urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443?transport=tcp'],
+      username: 'openrelayproject', credential: 'openrelayproject'
+    });
+  }
+  room = joinRoom({appId: APP_ID, password: pw, rtcConfig: {iceServers}}, 'g:' + group);
 
   const [sendHello, onHello] = room.makeAction('hello');
   const [sendChat, onChat]   = room.makeAction('chat');
