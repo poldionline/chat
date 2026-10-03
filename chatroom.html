@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwapChat</title>
+<style>
+  :root{--bg:#0f1419;--panel:#1a212b;--line:#2a3441;--text:#e6edf3;--mute:#8b98a8;--acc:#3ea6ff;--me:#1f4e79;--ok:#3fb950;--err:#f85149}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
+  button,input{font:inherit;color:inherit}
+  input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
+  input:focus{outline:2px solid var(--acc);border-color:transparent}
+  button{background:var(--acc);color:#04121f;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+  button.sec{background:var(--line);color:var(--text)}
+  button:disabled{opacity:.5;cursor:default}
+  #login{max-width:380px;margin:10vh auto;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;gap:12px}
+  #login h1{margin:0 0 4px;font-size:22px}
+  #login p{margin:0;color:var(--mute);font-size:13px}
+  #app{display:none;height:100%;grid-template-columns:1fr 320px}
+  #chatcol{display:flex;flex-direction:column;min-width:0;height:100%}
+  header{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+  header b{font-size:16px}
+  #status{font-size:12px;color:var(--mute)}
+  #msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
+  .m{max-width:75%;padding:8px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);align-self:flex-start;word-wrap:break-word;overflow-wrap:anywhere}
+  .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
+  .m .n{font-size:11px;color:var(--mute);margin-bottom:2px}
+  .sys{align-self:center;color:var(--mute);font-size:12px}
+  .sys a{color:var(--ok)}
+  form{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+  aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0;height:100%}
+  aside h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:0;padding:14px 14px 6px}
+  .list{overflow-y:auto;padding:0 10px 10px}
+  .f{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:8px;margin-top:6px;background:var(--bg)}
+  .f .i{flex:1;min-width:0}
+  .f .i div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .f small{color:var(--mute)}
+  .f button{padding:6px 10px;font-size:13px}
+  .bar{height:3px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--acc)}
+  .empty{color:var(--mute);font-size:13px;padding:6px 4px}
+  #drop{margin:10px;padding:14px;border:2px dashed var(--line);border-radius:10px;text-align:center;color:var(--mute);cursor:pointer;font-size:13px}
+  #drop.over{border-color:var(--acc);color:var(--text)}
+  #err{color:var(--err);font-size:13px;min-height:1em}
+  @media(max-width:760px){
+    #app{grid-template-columns:1fr;grid-template-rows:1fr 42vh}
+    aside{border-left:0;border-top:1px solid var(--line)}
+    .m{max-width:90%}
+  }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h1>SwapChat</h1>
+  <p>Chat und Dateitausch in passwortgeschützten Gruppen. Kein Konto, kein Server – die Teilnehmer verbinden sich direkt miteinander.</p>
+  <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off">
+  <input id="group" placeholder="Gruppenname" maxlength="40" autocomplete="off">
+  <input id="pw" type="password" placeholder="Gruppenpasswort" autocomplete="off">
+  <div id="err"></div>
+  <button id="join">Beitreten</button>
+</div>
+
+<div id="app">
+  <div id="chatcol">
+    <header>
+      <div><b id="gname"></b><div id="status">Verbinde …</div></div>
+      <button class="sec" id="leave">Verlassen</button>
+    </header>
+    <div id="msgs"></div>
+    <form id="form">
+      <input id="text" placeholder="Nachricht schreiben …" autocomplete="off">
+      <button>Senden</button>
+    </form>
+  </div>
+  <aside>
+    <h2>Meine Angebote</h2>
+    <div id="drop">Dateien hierher ziehen oder klicken<br>(andere können sie dann abholen)</div>
+    <input type="file" id="pick" multiple hidden>
+    <div class="list" id="mine" style="max-height:25%"></div>
+    <h2>Angebote der Gruppe</h2>
+    <div class="list" id="theirs" style="flex:1"></div>
+  </aside>
+</div>
+
+<script type="module">
+import {joinRoom, selfId} from 'https://cdn.jsdelivr.net/npm/trystero@0.21/+esm';
+
+const $ = id => document.getElementById(id);
+const APP_ID = 'swapchat-github-v1';
+let room, myName = '';
+const names = {};          // peerId -> Name
+const myFiles = new Map(); // id -> File
+const theirOffers = {};    // peerId -> [{id,name,size}]
+const dl = {};             // "peer:id" -> progress element
+
+const fmt = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+const nameOf = p => names[p] || 'Unbekannt';
+
+function addMsg(text, who, me){
+  const d = document.createElement('div');
+  d.className = 'm' + (me ? ' me' : '');
+  const n = document.createElement('div'); n.className = 'n'; n.textContent = who;
+  const t = document.createElement('div'); t.textContent = text;
+  d.append(n, t);
+  push(d);
+}
+function sys(text, node){
+  const d = document.createElement('div'); d.className = 'sys'; d.textContent = text;
+  if(node) d.append(' ', node);
+  push(d);
+}
+function push(el){
+  const box = $('msgs');
+  const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.append(el);
+  if(atEnd) box.scrollTop = box.scrollHeight;
+}
+function updateStatus(){
+  const n = Object.keys(names).length;
+  $('status').textContent = n ? `${n} weitere${n === 1 ? 'r' : ''} online: ` + Object.values(names).join(', ')
+                              : 'Noch niemand sonst da – warte auf Mitglieder …';
+}
+
+$('join').onclick = join;
+['name','group','pw'].forEach(i => $(i).addEventListener('keydown', e => { if(e.key === 'Enter') join(); }));
+
+function join(){
+  const name = $('name').value.trim(), group = $('group').value.trim(), pw = $('pw').value;
+  if(!name || !group || !pw){ $('err').textContent = 'Bitte alle drei Felder ausfüllen.'; return; }
+  myName = name;
+  // Der Gruppenname wird zur Raum-ID, das Passwort verschlüsselt den Verbindungsaufbau.
+  // Wer ein falsches Passwort nutzt, landet zwar im gleichen Raum, kann aber keine Verbindung aufbauen.
+  room = joinRoom({appId: APP_ID, password: pw}, 'g:' + group);
+
+  const [sendHello, onHello] = room.makeAction('hello');
+  const [sendChat, onChat]   = room.makeAction('chat');
+  const [sendOffers, onOffers] = room.makeAction('offers');
+  const [sendWant, onWant]   = room.makeAction('want');
+  const [sendFile, onFile, onFileProg] = room.makeAction('file');
+
+  const pushOffers = to => sendOffers(
+    [...myFiles].map(([id, f]) => ({id, name: f.name, size: f.size})), to);
+
+  room.onPeerJoin(p => { sendHello(myName, p); pushOffers(p); });
+  room.onPeerLeave(p => {
+    sys(nameOf(p) + ' hat die Gruppe verlassen.');
+    delete names[p]; delete theirOffers[p];
+    renderTheirs(); updateStatus();
+  });
+  onHello((n, p) => {
+    const first = !names[p];
+    names[p] = String(n).slice(0, 24);
+    if(first) sys(names[p] + ' ist beigetreten.');
+    updateStatus(); renderTheirs();
+  });
+  onChat((t, p) => addMsg(String(t), nameOf(p), false));
+  onOffers((list, p) => { theirOffers[p] = Array.isArray(list) ? list : []; renderTheirs(); });
+  onWant(async (id, p) => {
+    const f = myFiles.get(id);
+    if(!f) return;
+    sys(`${nameOf(p)} holt „${f.name}“ ab …`);
+    await sendFile(await f.arrayBuffer(), p, {id, name: f.name, type: f.type});
+  });
+  onFileProg((pct, p, meta) => {
+    const bar = dl[p + ':' + (meta && meta.id)];
+    if(bar) bar.style.width = Math.round(pct * 100) + '%';
+  });
+  onFile((data, p, meta) => {
+    const blob = new Blob([data], {type: meta.type || 'application/octet-stream'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = meta.name; a.textContent = '↓ ' + meta.name;
+    sys(`Datei von ${nameOf(p)} erhalten:`, a);
+    a.click();
+    const bar = dl[p + ':' + meta.id]; if(bar) bar.style.width = '100%';
+  });
+
+  // Chat senden
+  $('form').onsubmit = e => {
+    e.preventDefault();
+    const t = $('text').value.trim();
+    if(!t) return;
+    sendChat(t);
+    addMsg(t, myName, true);
+    $('text').value = '';
+  };
+
+  // Dateien anbieten
+  const addFiles = files => {
+    for(const f of files){
+      myFiles.set(crypto.randomUUID(), f);
+    }
+    renderMine(); pushOffers();
+  };
+  $('drop').onclick = () => $('pick').click();
+  $('pick').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+  $('drop').ondragover = e => { e.preventDefault(); $('drop').classList.add('over'); };
+  $('drop').ondragleave = () => $('drop').classList.remove('over');
+  $('drop').ondrop = e => { e.preventDefault(); $('drop').classList.remove('over'); addFiles(e.dataTransfer.files); };
+
+  function renderMine(){
+    const box = $('mine'); box.textContent = '';
+    if(!myFiles.size){ box.innerHTML = '<div class="empty">Noch nichts angeboten.</div>'; return; }
+    for(const [id, f] of myFiles){
+      const row = document.createElement('div'); row.className = 'f';
+      const info = document.createElement('div'); info.className = 'i';
+      const nm = document.createElement('div'); nm.textContent = f.name;
+      const sz = document.createElement('small'); sz.textContent = fmt(f.size);
+      info.append(nm, sz);
+      const b = document.createElement('button'); b.className = 'sec'; b.textContent = 'Entfernen';
+      b.onclick = () => { myFiles.delete(id); renderMine(); pushOffers(); };
+      row.append(info, b); box.append(row);
+    }
+  }
+  window.renderMine = renderMine;
+
+  window.renderTheirs = renderTheirs;
+  function renderTheirs(){
+    const box = $('theirs'); box.textContent = '';
+    let any = false;
+    for(const p in theirOffers){
+      for(const o of theirOffers[p]){
+        any = true;
+        const row = document.createElement('div'); row.className = 'f';
+        const info = document.createElement('div'); info.className = 'i';
+        const nm = document.createElement('div'); nm.textContent = o.name;
+        const sz = document.createElement('small'); sz.textContent = `${fmt(o.size)} · von ${nameOf(p)}`;
+        const bar = document.createElement('div'); bar.className = 'bar';
+        const fill = document.createElement('i'); bar.append(fill);
+        dl[p + ':' + o.id] = fill;
+        info.append(nm, sz, bar);
+        const b = document.createElement('button'); b.textContent = 'Holen';
+        b.onclick = () => { fill.style.width = '2%'; sendWant(o.id, p); };
+        row.append(info, b); box.append(row);
+      }
+    }
+    if(!any) box.innerHTML = '<div class="empty">Noch keine Angebote in der Gruppe.</div>';
+  }
+
+  $('login').style.display = 'none';
+  $('app').style.display = 'grid';
+  $('gname').textContent = '🔒 ' + group;
+  renderMine(); renderTheirs(); updateStatus();
+  sys('Du bist in der Gruppe. Nachrichten werden nicht gespeichert – nur wer online ist, empfängt sie.');
+  $('text').focus();
+}
+
+$('leave').onclick = () => { if(room) room.leave(); location.reload(); };
+</script>
+</body>
+</html>
