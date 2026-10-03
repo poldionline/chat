@@ -75,7 +75,7 @@
 <div id="app">
   <div id="chatcol">
     <header>
-      <div><b id="gname"></b> <small style="color:var(--mute)">v5</small><div id="status">Verbinde …</div></div>
+      <div><b id="gname"></b> <small style="color:var(--mute)">v6</small><div id="status">Verbinde …</div></div>
       <button class="sec" id="leave">Verlassen</button>
     </header>
     <div id="msgs"></div>
@@ -127,10 +127,18 @@ function push(el){
   box.append(el);
   if(atEnd) box.scrollTop = box.scrollHeight;
 }
+const members = {}; // id -> {n, t}  (auch Mitglieder, die nur über Dritte erreichbar sind)
 function updateStatus(){
-  const n = Object.keys(names).length;
-  $('status').textContent = n ? `${n} weitere${n === 1 ? 'r' : ''} online: ` + Object.values(names).join(', ')
-                              : 'Noch niemand sonst da – warte auf Mitglieder …';
+  const now = Date.now(), all = {};
+  for(const id in members){
+    if(now - members[id].t > 16000) delete members[id]; else all[id] = members[id].n;
+  }
+  for(const id in names) all[id] = names[id];
+  const list = Object.values(all);
+  const direct = Object.keys(names).length;
+  $('status').textContent = list.length
+    ? `Online (${list.length + 1}): du, ` + list.join(', ') + (list.length > direct ? ' · teils über Dritte' : '')
+    : 'Online (1): nur du – warte auf Mitglieder …';
 }
 
 try{
@@ -222,15 +230,29 @@ function join(){
   const [sendChat, onChat]   = room.makeAction('chat');
   const [sendOffers, onOffers] = room.makeAction('offers');
   const [sendWant, onWant]   = room.makeAction('want');
+  const [sendPres, onPres]   = room.makeAction('presence');
+  let seq = 0; const lastSeq = {};
+  const announce = () => { sendPres({id: selfId, n: myName, s: ++seq}); updateStatus(); };
+  onPres(m => {
+    if(!m || m.id === selfId || typeof m.s !== 'number') return;
+    if((lastSeq[m.id] || 0) >= m.s) return;
+    lastSeq[m.id] = m.s;
+    const first = !members[m.id] && !names[m.id];
+    members[m.id] = {n: String(m.n).slice(0, 24), t: Date.now()};
+    if(first) sys(members[m.id].n + ' ist online.');
+    sendPres(m);           // weiterreichen
+    updateStatus();
+  });
+  setInterval(announce, 5000);
   const [sendFile, onFile, onFileProg] = room.makeAction('file');
 
   const pushOffers = to => sendOffers(
     [...myFiles].map(([id, f]) => ({id, name: f.name, size: f.size})), to);
 
-  room.onPeerJoin(p => { sendHello(myName, p); pushOffers(p); });
+  room.onPeerJoin(p => { sendHello(myName, p); pushOffers(p); announce(); });
   room.onPeerLeave(p => {
     sys(nameOf(p) + ' hat die Gruppe verlassen.');
-    delete names[p]; delete theirOffers[p];
+    delete names[p]; delete members[p]; delete theirOffers[p];
     renderTheirs(); updateStatus();
   });
   onHello((n, p) => {
