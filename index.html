@@ -67,6 +67,7 @@
   </details>
   <div id="err"></div>
   <button id="join">Beitreten</button>
+  <button class="sec" id="local" type="button">Lokales Netz freischalten (Safari)</button>
   <button class="sec" id="diag" type="button">Verbindung testen</button>
   <pre id="diagout" style="margin:0;white-space:pre-wrap;font-size:12px;color:var(--mute)"></pre>
 </div>
@@ -166,6 +167,19 @@ $('diag').onclick = async () => {
     log(types.has('relay') ? '✔ TURN erreichbar' : '✘ TURN nicht erreichbar (Gratis-Relay evtl. down)');
   }catch(e){ log('✘ WebRTC nicht verfügbar: ' + e.message); }
   log('Fertig.');
+};
+
+$('local').onclick = async () => {
+  // Safari gibt lokale Netzwerkadressen für WebRTC nur frei, wenn einmal Mikrofonzugriff erlaubt wurde.
+  // Es wird nichts aufgenommen: der Zugriff wird sofort wieder beendet.
+  const b = $('local');
+  try{
+    const st = await navigator.mediaDevices.getUserMedia({audio:true});
+    st.getTracks().forEach(t => t.stop());
+    b.textContent = '✔ Freigeschaltet – jetzt beitreten';
+  }catch(e){
+    b.textContent = '✘ Abgelehnt oder nicht möglich';
+  }
 };
 
 $('join').onclick = join;
