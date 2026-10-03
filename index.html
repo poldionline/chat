@@ -56,9 +56,9 @@
 <div id="login">
   <h1>SwapChat</h1>
   <p>Chat und Dateitausch in passwortgeschützten Gruppen. Kein Konto, kein Server – die Teilnehmer verbinden sich direkt miteinander.</p>
-  <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off">
-  <input id="group" placeholder="Gruppenname" maxlength="40" autocomplete="off">
-  <input id="pw" type="password" placeholder="Gruppenpasswort" autocomplete="off">
+  <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <input id="group" placeholder="Gruppenname" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <input id="pw" type="password" placeholder="Gruppenpasswort" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
   <details style="font-size:13px;color:var(--mute)">
     <summary style="cursor:pointer">Relay-Server (TURN) für schwierige Netze</summary>
     <p style="margin:8px 0">Ohne Eingabe wird ein öffentlicher Gratis-Relay genutzt (kann ausfallen). Zuverlässiger: kostenloses Konto bei <b>metered.ca</b> (Open Relay, 20 GB/Monat), dort „TURN Credentials" anlegen und hier eintragen. Wird nur in deinem Browser gespeichert.</p>
@@ -67,6 +67,8 @@
   </details>
   <div id="err"></div>
   <button id="join">Beitreten</button>
+  <button class="sec" id="diag" type="button">Verbindung testen</button>
+  <pre id="diagout" style="margin:0;white-space:pre-wrap;font-size:12px;color:var(--mute)"></pre>
 </div>
 
 <div id="app">
@@ -135,11 +137,42 @@ try{
   $('tcred').value = localStorage.getItem('turn_c') || '';
 }catch(e){}
 
+$('diag').onclick = async () => {
+  const out = $('diagout'); out.textContent = 'Teste …\n';
+  const log = t => out.textContent += t + '\n';
+  // 1) Relays (WebSocket)
+  for(const url of ['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net']){
+    const ok = await new Promise(res => {
+      let done = false; const fin = v => { if(!done){ done = true; res(v); } };
+      try{ const w = new WebSocket(url); w.onopen = () => { w.close(); fin(true); }; w.onerror = () => fin(false); }
+      catch(e){ fin(false); }
+      setTimeout(() => fin(false), 6000);
+    });
+    log((ok ? '✔ ' : '✘ ') + 'Relay ' + url.replace('wss://',''));
+  }
+  // 2) ICE-Kandidaten
+  try{
+    const pc = new RTCPeerConnection({iceServers:[
+      {urls:'stun:stun.l.google.com:19302'},
+      {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443'],username:'openrelayproject',credential:'openrelayproject'}]});
+    pc.createDataChannel('x');
+    const types = new Set();
+    pc.onicecandidate = e => { if(e.candidate){ const m = / typ (\w+)/.exec(e.candidate.candidate); if(m) types.add(m[1]); } };
+    await pc.setLocalDescription(await pc.createOffer());
+    await new Promise(r => setTimeout(r, 5000));
+    pc.close();
+    log('WebRTC-Kandidaten: ' + ([...types].join(', ') || 'keine'));
+    log(types.has('srflx') ? '✔ STUN erreichbar' : '✘ STUN nicht erreichbar');
+    log(types.has('relay') ? '✔ TURN erreichbar' : '✘ TURN nicht erreichbar (Gratis-Relay evtl. down)');
+  }catch(e){ log('✘ WebRTC nicht verfügbar: ' + e.message); }
+  log('Fertig.');
+};
+
 $('join').onclick = join;
 ['name','group','pw'].forEach(i => $(i).addEventListener('keydown', e => { if(e.key === 'Enter') join(); }));
 
 function join(){
-  const name = $('name').value.trim(), group = $('group').value.trim(), pw = $('pw').value;
+  const name = $('name').value.trim(), group = $('group').value.trim().toLowerCase(), pw = $('pw').value;
   if(!name || !group || !pw){ $('err').textContent = 'Bitte alle drei Felder ausfüllen.'; return; }
   myName = name;
   // Der Gruppenname wird zur Raum-ID, das Passwort verschlüsselt den Verbindungsaufbau.
@@ -227,7 +260,9 @@ function join(){
   // Dateien anbieten
   const addFiles = files => {
     for(const f of files){
-      myFiles.set(crypto.randomUUID(), f);
+      const id = (crypto.randomUUID ? crypto.randomUUID()
+                 : Date.now().toString(36) + Math.random().toString(36).slice(2));
+      myFiles.set(id, f);
     }
     renderMine(); pushOffers();
   };
