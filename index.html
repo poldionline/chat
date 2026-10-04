@@ -2,343 +2,1054 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SwapChat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LAN-Chat</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%AC%3C/text%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script>if(typeof Peer==='undefined'){document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');}</script>
 <style>
-  :root{--bg:#0f1419;--panel:#1a212b;--line:#2a3441;--text:#e6edf3;--mute:#8b98a8;--acc:#3ea6ff;--me:#1f4e79;--err:#f85149}
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0}
-  body{background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
-  button,input{font:inherit;color:inherit}
-  input{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
-  button{background:var(--acc);color:#04121f;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
-  button.sec{background:var(--line);color:var(--text)}
-  #login{max-width:380px;margin:10vh auto;padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;gap:12px}
-  #login h1{margin:0;font-size:22px}
-  #login p{margin:0;color:var(--mute);font-size:13px}
-  #err{color:var(--err);font-size:13px;min-height:1em}
-  #app{display:none;height:100%;grid-template-columns:1fr 300px}
-  #chatcol{display:flex;flex-direction:column;min-width:0;height:100%}
-  header{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
-  #status{font-size:12px;color:var(--mute)}
-  #msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-  .m{max-width:75%;padding:8px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);align-self:flex-start;overflow-wrap:anywhere}
-  .m.me{align-self:flex-end;background:var(--me);border-color:transparent}
-  .m .n{font-size:11px;color:var(--mute)}
-  .sys{align-self:center;color:var(--mute);font-size:12px}
-  .sys a{color:var(--acc)}
-  form{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
-  aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0;height:100%;overflow-y:auto}
-  aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:0;padding:14px 14px 6px}
-  .list{padding:0 10px 10px}
-  .f{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:8px;margin-top:6px;background:var(--bg)}
-  .f .i{flex:1;min-width:0}
-  .f .i div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .f small{color:var(--mute)}
-  .f button{padding:6px 10px;font-size:13px}
-  .bar{height:3px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden}
-  .bar i{display:block;height:100%;width:0;background:var(--acc)}
-  .empty{color:var(--mute);font-size:13px;padding:6px 4px}
-  #drop{margin:6px 10px;padding:14px;border:2px dashed var(--line);border-radius:10px;text-align:center;color:var(--mute);cursor:pointer;font-size:13px}
-  @media(max-width:760px){
-    #app{grid-template-columns:1fr;grid-template-rows:1fr 42vh}
-    aside{border-left:0;border-top:1px solid var(--line)}
-    .m{max-width:90%}
+:root{
+  --bg:#e9efec; --surface:#ffffff; --surface2:#f2f6f4; --ink:#13231f; --muted:#5b6f69; --line:#d3dedb;
+  --accent:#0d6b61; --accent-ink:#ffffff; --accent-soft:#d9efea;
+  --me:#0d6b61; --me-ink:#ffffff; --ok:#27b35f; --warn:#e0a21b; --bad:#d6453a;
+  --shadow:0 1px 2px rgba(17,32,43,.06),0 10px 30px rgba(17,32,43,.08);
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0b1412; --surface:#111d1a; --surface2:#182623; --ink:#e4f0ec; --muted:#8aa39c; --line:#223632;
+    --accent:#5ccfbd; --accent-ink:#06201b; --accent-soft:#17352f;
+    --me:#0f6a5f; --me-ink:#ffffff; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
   }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+#app{height:100%}
+
+label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
+label small{font-weight:400;color:var(--muted);font-size:12.5px}
+input:not([type=checkbox]){width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--surface2);outline:none}
+input:not([type=checkbox]):focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+label.check{flex-direction:row;align-items:center;gap:9px;font-weight:500}
+.btn{border:1px solid var(--line);background:var(--surface);padding:10px 16px;border-radius:11px;cursor:pointer;font-weight:600}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{padding:6px 12px;font-size:13px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-size:12.5px;color:var(--muted)}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent);font-weight:650;text-decoration:underline;cursor:pointer}
+dialog.help{display:none;flex-direction:column;gap:10px;max-height:88vh;overflow-y:auto}
+dialog.help[open]{display:flex}
+dialog.help p{margin:0;color:var(--muted)}
+dialog.help ul{margin:0 0 6px;padding-left:20px;display:flex;flex-direction:column;gap:5px}
+.mact{position:absolute;top:3px;right:4px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:inherit;color:inherit;opacity:0;cursor:pointer;display:grid;place-items:center}
+.bubble:hover .mact,.mact:focus-visible{opacity:.65}
+.mact:hover{opacity:1!important}
+@media (hover:none){.mact{opacity:.35}}
+.row.deleted .mact{opacity:0!important;pointer-events:none}
+.edited{margin-right:6px;font-style:italic}
+.gone{font-style:italic;opacity:.75;padding:2px 0}
+.quote{border-left:3px solid var(--accent);background:rgba(127,127,127,.14);border-radius:8px;padding:5px 9px;margin:2px 0 6px;cursor:pointer;font-size:13px}
+.me .quote{border-left-color:#fff;background:rgba(255,255,255,.16)}
+.qwho{font-weight:700;font-size:12px;color:var(--accent)}
+.me .qwho{color:#fff}
+.qtxt{opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px}
+.reacts{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.rchip{border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:99px;padding:1px 8px;font-size:13px;cursor:pointer}
+.rchip.mine{border-color:var(--accent);background:var(--accent-soft)}
+.row.flash .bubble{animation:flash 1.4s}
+@keyframes flash{0%,55%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+.ctx{position:fixed;z-index:70;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:6px;min-width:200px}
+.ctx-react{display:flex;gap:2px;padding:2px 2px 6px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.ctx-react button{border:0;background:none;font-size:22px;line-height:1;padding:5px 6px;border-radius:10px;cursor:pointer}
+.ctx-react button:hover,.ctx-react button.sel{background:var(--accent-soft)}
+.ctx-item{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 12px;border-radius:9px;cursor:pointer}
+.ctx-item:hover{background:var(--surface2)}
+.ctx-item.danger{color:var(--bad)}
+.warnbox{background:#fff1d6;color:#5b3d00;border-radius:11px;padding:10px 13px;font-size:13.5px}
+
+/* Hauptansicht */
+#main{height:100%;display:grid;grid-template-columns:292px 1fr}
+#side{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;padding:14px 12px;gap:10px}
+.side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px 10px;border-bottom:1px solid var(--line)}
+.side-head strong{display:block;font-size:17px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.tiny{font-size:12px;color:var(--muted)}
+.pad{padding:8px 10px}
+#groupList{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.gi{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-left:3px solid transparent;background:none;border-radius:4px 11px 11px 4px;text-align:left;cursor:pointer}
+.gi:hover{background:var(--surface2)}
+.gi.active{background:var(--accent-soft);border-left-color:var(--accent);font-weight:650}
+.gname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--warn)}
+.dot.online{background:var(--ok)} .dot.error{background:var(--bad)}
+.badge{margin-left:auto;background:var(--accent);color:var(--accent-ink);border-radius:99px;font-size:11.5px;font-weight:700;padding:1px 8px}
+.side-foot{font-size:12px;color:var(--muted);padding:2px 6px}
+
+#chat{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
+#chatHead{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.head-text{flex:1;min-width:0}
+#gTitle{font-weight:700;font-size:17px;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gSub{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;flex:none}
+.icon-btn:hover{background:var(--surface2)}
+.menu{display:none}
+#msgsWrap{flex:1;min-height:0;position:relative}
+.msgs{position:absolute;inset:0;overflow-y:auto;padding:18px 18px 10px;display:flex;flex-direction:column;gap:6px}
+#empty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:var(--muted);padding:30px;gap:12px;justify-items:center}
+#empty strong{color:var(--ink);font-size:18px}
+
+.row{display:flex}
+.row.me{justify-content:flex-end}
+.bubble{position:relative;-webkit-touch-callout:none;max-width:min(80%,560px);padding:8px 12px 6px;border-radius:16px;background:var(--surface);border:1px solid var(--line);overflow-wrap:anywhere}
+.me .bubble{background:var(--me);color:var(--me-ink);border-color:transparent;border-bottom-right-radius:5px}
+.other .bubble{border-bottom-left-radius:5px}
+.who{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:2px}
+.txt{white-space:pre-wrap}
+.txt a,.me .bubble a{color:inherit;text-decoration:underline}
+.time{font-size:11px;opacity:.65;text-align:right;margin-top:2px}
+.sys{align-self:center;max-width:90%;text-align:center;font-size:12.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:3px 12px;border-radius:99px;margin:6px 0}
+.file{display:flex;gap:11px;align-items:center;min-width:210px}
+.fico{flex:none;width:40px;height:40px;border-radius:11px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.me .fico{background:rgba(255,255,255,.18);color:#fff}
+.finfo{min-width:0;display:flex;flex-direction:column;gap:3px}
+.fname{font-weight:650;overflow-wrap:anywhere}
+.fsize{font-size:12px;opacity:.75}
+.bar{height:4px;border-radius:4px;background:rgba(127,127,127,.28);overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s}
+.me .bar>i{background:#fff}
+.dl{font-size:13px;font-weight:650;color:var(--accent)!important}
+.me .dl{color:#fff!important}
+.preview{display:block;max-width:100%;max-height:260px;border-radius:10px;margin:8px 0 2px}
+
+#composer{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.crow{display:flex;gap:8px;align-items:flex-end}
+#ctxBar{display:flex;align-items:center;gap:10px;border-left:3px solid var(--accent);background:var(--surface2);border-radius:10px;padding:5px 6px 5px 12px}
+.ctxinfo{flex:1;min-width:0;display:flex;flex-direction:column}
+#ctxTitle{font-size:12.5px;color:var(--accent)}
+#ctxText{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#msgIn{flex:1;min-width:0;resize:none;max-height:140px;border:1px solid var(--line);border-radius:14px;padding:10px 13px;background:var(--surface2);outline:none;line-height:1.4}
+.send{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.send:hover{background:var(--accent);filter:brightness(1.1)}
+
+dialog{border:1px solid var(--line);border-radius:20px;padding:26px;background:var(--surface);color:var(--ink);width:min(420px,92vw);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(5,12,18,.5)}
+dialog form{display:flex;flex-direction:column;gap:15px}
+dialog h2{margin:0;font-size:20px;letter-spacing:-.02em}
+.dlg-actions{display:flex;gap:10px;justify-content:flex-end}
+
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#dropHint{position:fixed;inset:12px;border:3px dashed var(--accent);border-radius:22px;background:color-mix(in srgb,var(--bg) 82%,transparent);display:grid;place-items:center;font-size:20px;font-weight:700;color:var(--accent);z-index:50;pointer-events:none}
+#scrim{display:none}
+
+@media (max-width:760px){
+  #main{grid-template-columns:1fr}
+  #side{position:fixed;top:0;bottom:0;left:0;width:min(86vw,330px);z-index:30;transform:translateX(-102%);transition:transform .2s;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+  body.drawer #side{transform:none;box-shadow:var(--shadow)}
+  body.drawer #scrim{display:block;position:fixed;inset:0;background:rgba(5,12,18,.45);z-index:25}
+  .menu{display:grid}
+  .msgs{padding:14px 10px 8px}
+  .bubble{max-width:88%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- Design-Überarbeitung ---------- */
+body{font-family:ui-rounded,"Avenir Next","Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+.btn{border-radius:12px;padding:10px 18px}
+.btn.primary{box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 28%,transparent)}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+#side{padding:16px 12px 12px;gap:12px}
+.side-head{padding:2px 6px 14px}
+.gi{border-left:0;border-radius:14px;padding:9px 10px}
+.gi.active{background:var(--accent-soft)}
+.av{position:relative;flex:none;width:38px;height:38px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700}
+.gi.active .av{background:var(--accent);color:var(--accent-ink)}
+.av .dot{position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border:2.5px solid var(--surface)}
+.side-foot{background:var(--surface2);border-radius:12px;padding:10px 12px;line-height:1.4}
+#chatHead{padding:14px 18px}
+#msgsWrap{background:radial-gradient(color-mix(in srgb,var(--line) 70%,transparent) 1.1px,transparent 1.4px) 0 0/22px 22px}
+.bubble{border-radius:18px;box-shadow:0 1px 2px rgba(17,32,29,.07)}
+.me .bubble{border-bottom-right-radius:6px}
+.other .bubble{border-bottom-left-radius:6px}
+#composer{background:transparent;border-top:0;padding:6px 14px calc(14px + env(safe-area-inset-bottom,0px))}
+.crow{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:6px;box-shadow:var(--shadow);align-items:flex-end}
+.crow:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.crow .icon-btn{border:0;border-radius:50%;background:none;width:40px;height:40px}
+.crow .icon-btn:hover{background:var(--surface2)}
+.crow .send{background:var(--accent);color:var(--accent-ink)}
+.crow .send:hover{background:var(--accent);filter:brightness(1.1)}
+#msgIn,#msgIn:focus{border:0;background:transparent;box-shadow:none;padding:10px 6px}
+#ctxBar{margin:0 6px}
+
+/* Startseite */
+#empty{gap:0;padding:28px 24px}
+#empty .hero{width:min(260px,70vw);height:auto;margin-bottom:10px}
+.hl{stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:4 6;opacity:.55;animation:flow 2.4s linear infinite;fill:none}
+.hn{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.hd{fill:var(--accent)}
+.hc{fill:var(--accent)}
+.hi{fill:none;stroke:var(--accent-ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes flow{to{stroke-dashoffset:-20}}
+#empty h1{margin:0 0 8px;font-size:clamp(25px,4.4vw,34px);line-height:1.15;letter-spacing:-.025em;color:var(--ink)}
+#empty .lead{margin:0 0 18px;max-width:36ch;font-size:16px}
+.feat{list-style:none;margin:0 0 24px;padding:0;display:flex;flex-direction:column;gap:8px;text-align:left}
+.feat li{display:flex;align-items:center;gap:10px;color:var(--ink)}
+.feat li{position:relative}
+.feat li::before{content:"";flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent-soft)}
+.feat li::after{content:"";position:absolute;left:7.5px;top:50%;width:5px;height:9px;border:solid var(--accent);border-width:0 2.4px 2.4px 0;transform:translateY(-62%) rotate(45deg)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.cta .btn.primary{padding:12px 22px;font-size:16px}
+#envWarn{margin-bottom:16px;max-width:42ch}
+
+/* Dialoge */
+dialog{border:0;border-radius:26px;padding:28px;box-shadow:0 24px 70px rgba(5,20,16,.35)}
+dialog::backdrop{background:rgba(6,18,15,.55);backdrop-filter:blur(5px)}
+dialog .lead{margin:-8px 0 0;color:var(--muted);font-size:14px}
+dialog .hint{background:var(--surface2);border-radius:12px;padding:10px 12px}
+@media (prefers-reduced-motion:reduce){.hl{animation:none}}
+
+.head-btns{display:flex;align-items:center;gap:6px}
+.head-btns .icon-btn{width:32px;height:32px;border-radius:10px}
+.stack{display:flex;flex-direction:column;gap:18px}
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.sw{aspect-ratio:1;border-radius:14px;border:3px solid transparent;cursor:pointer;background:var(--c);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3)}
+.sw[aria-pressed=true]{border-color:var(--ink)}
+label.own{flex-direction:row;align-items:center;justify-content:space-between}
+dialog input[type=color]{width:56px;height:40px;padding:3px;cursor:pointer}
 </style>
 </head>
 <body>
-
-<div id="login">
-  <h1>SwapChat</h1>
-  <p>Chat und Dateitausch in passwortgeschützten Gruppen. Kein Konto, kein Server.</p>
-  <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-  <input id="group" placeholder="Gruppenname" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-  <input id="pw" type="password" placeholder="Gruppenpasswort" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-  <div id="err"></div>
-  <button id="join">Beitreten</button>
-  <button id="mic" class="sec" type="button">Nur Safari: Netzwerk freischalten</button>
-</div>
-
 <div id="app">
-  <div id="chatcol">
-    <header>
-      <div><b id="gname"></b> <small style="color:var(--mute)">v8</small><div id="status">Verbinde …</div></div>
-      <button class="sec" id="leave">Verlassen</button>
-    </header>
-    <div id="msgs"></div>
-    <form id="form">
-      <input id="text" placeholder="Nachricht schreiben …" autocomplete="off">
-      <button>Senden</button>
-    </form>
-  </div>
-  <aside>
-    <h2>Meine Angebote</h2>
-    <div id="drop">Dateien hierher ziehen oder tippen</div>
-    <input type="file" id="pick" multiple hidden>
-    <div class="list" id="mine"></div>
-    <h2>Angebote der Gruppe</h2>
-    <div class="list" id="theirs"></div>
-  </aside>
+
+  <section id="main">
+    <aside id="side">
+      <div class="side-head">
+        <div class="brand"><span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></span><strong>LAN-Chat</strong></div>
+        <div class="head-btns"><button class="icon-btn" id="btnColor" type="button" aria-label="Akzentfarbe ändern" title="Akzentfarbe ändern"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.5-1.9-.3-1 .4-2.1 1.5-2.1H17a4 4 0 0 0 4-4c0-5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1" fill="currentColor"/><circle cx="10" cy="7" r="1" fill="currentColor"/><circle cx="15" cy="7.5" r="1" fill="currentColor"/></svg></button><button class="btn small" id="btnHelp" type="button">Hilfe</button></div>
+      </div>
+      <div class="tiny pad">Deine Gruppen</div>
+      <nav id="groupList"></nav>
+      <button class="btn" id="btnAdd" type="button">Gruppe erstellen oder beitreten</button>
+      <div class="side-foot">Nachrichten und Dateien sind Ende-zu-Ende verschlüsselt (AES-256).</div>
+    </aside>
+    <div id="scrim"></div>
+
+    <section id="chat">
+      <header id="chatHead">
+        <button class="icon-btn menu" id="btnMenu" type="button" aria-label="Gruppen anzeigen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="head-text"><div id="gTitle">LAN-Chat</div><div id="gSub"></div></div>
+        <button class="btn small" id="btnLeave" type="button" hidden>Gruppe verlassen</button>
+      </header>
+      <div id="msgsWrap">
+        <div id="empty">
+          <div id="envWarn" class="warnbox" hidden></div>
+          <svg class="hero" viewBox="0 0 240 132" aria-hidden="true">
+            <path class="hl" d="M120 66 36 34M120 66 204 34M120 66 36 100M120 66 204 100"/>
+            <circle class="hn" cx="36" cy="34" r="11"/><circle class="hd" cx="36" cy="34" r="4"/>
+            <circle class="hn" cx="204" cy="34" r="11"/><circle class="hd" cx="204" cy="34" r="4"/>
+            <circle class="hn" cx="36" cy="100" r="11"/><circle class="hd" cx="36" cy="100" r="4"/>
+            <circle class="hn" cx="204" cy="100" r="11"/><circle class="hd" cx="204" cy="100" r="4"/>
+            <circle class="hc" cx="120" cy="66" r="27"/>
+            <path class="hi" transform="translate(108 54)" d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>
+          </svg>
+          <h1>Chatten im eigenen Netz</h1>
+          <p class="lead">Direkt von Gerät zu Gerät, ohne Server und ohne Konto.</p>
+          <ul class="feat">
+            <li>Nachrichten und Dateien sind verschlüsselt</li>
+            <li>Dateien bis 50 MB senden</li>
+            <li>Nur Name, Gruppe und Passwort nötig</li>
+          </ul>
+          <div class="cta">
+            <button class="btn primary" id="btnAdd2" type="button">Gruppe erstellen oder beitreten</button>
+            <button class="btn" id="btnHelp2" type="button">Wann funktioniert es nicht?</button>
+          </div>
+        </div>
+      </div>
+      <footer id="composer" hidden>
+        <div id="ctxBar" hidden>
+          <div class="ctxinfo"><strong id="ctxTitle"></strong><span id="ctxText"></span></div>
+          <button class="icon-btn" id="ctxCancel" type="button" aria-label="Abbrechen">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="crow">
+        <button class="icon-btn" id="btnAttach" type="button" aria-label="Datei senden" title="Datei senden">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <textarea id="msgIn" rows="1" placeholder="Nachricht schreiben" aria-label="Nachricht"></textarea>
+        <button class="icon-btn send" id="btnSend" type="button" aria-label="Senden">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+        </button>
+        </div>
+      </footer>
+    </section>
+  </section>
 </div>
 
-<script type="module">
-import {joinRoom, selfId} from 'https://cdn.jsdelivr.net/npm/trystero@0.21/+esm';
+<div id="dropHint" hidden>Datei hier ablegen</div>
+<div id="toast" role="status"></div>
+<input type="file" id="fileIn" multiple hidden>
 
-// Optional: TURN-Server für zusätzliche Sicherheit bei schwierigen Netzen (leer lassen = nur Umweg über andere Teilnehmer)
-// Beispiel: [{urls:'turn:host:3478', username:'user', credential:'pass'}]
-const TURN = [];
+<dialog id="dlg">
+  <form id="dlgForm" autocomplete="off">
+    <h2>Gruppe erstellen oder beitreten</h2>
+    <p class="lead">Drei Angaben genügen.</p>
+    <label>Benutzername
+      <input id="gUser" maxlength="24" required autocomplete="nickname">
+      <small>Dein Benutzername wird auf diesem Gerät gemerkt. Gruppen und Passwörter werden nicht gespeichert.</small>
+    </label>
+    <label>Gruppenname
+      <input id="gName" maxlength="40" required>
+    </label>
+    <label>Passwort
+      <input id="gPw" type="password" minlength="4" required autocomplete="new-password">
+      <small>Gibt es die Gruppe noch nicht, wird sie mit diesem Passwort erstellt. Sonst trittst du mit dem Passwort bei. Mindestens 4 Zeichen.</small>
+    </label>
+    <div class="hint">Funktioniert nicht in jedem Netz, zum Beispiel nicht über Mobilfunk oder in Firmen-WLANs. <button type="button" class="linkbtn" id="btnHelp3">Details</button></div>
+    <div class="dlg-actions">
+      <button class="btn" id="dlgCancel" type="button">Abbrechen</button>
+      <button class="btn primary" type="submit">Weiter</button>
+    </div>
+  </form>
+</dialog>
 
-const $ = id => document.getElementById(id);
-const fmt = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+<dialog id="dlgColor">
+  <div class="stack">
+    <h2>Akzentfarbe</h2>
+    <div class="swatches" id="swatches"></div>
+    <label class="own">Eigene Farbe <input type="color" id="colorIn" value="#0d6b61"></label>
+    <div class="dlg-actions">
+      <button class="btn" id="colorReset" type="button">Zurücksetzen</button>
+      <button class="btn primary" id="colorClose" type="button">Fertig</button>
+    </div>
+  </div>
+</dialog>
 
-const names = {};        // peerId -> Name
-const myFiles = new Map(); // id -> File
-const theirOffers = {};  // peerId -> [{id,name,size}]
-const bars = {};         // "peerId:id" -> Fortschrittsbalken
-let room, myName = '';
+<dialog id="dlgHelp" class="help">
+  <h2>Wann funktioniert es nicht?</h2>
+  <p>Die Geräte verbinden sich direkt miteinander, ohne Relay-Server dazwischen. Das klappt nicht in jedem Netz.</p>
+  <strong>Funktioniert meist</strong>
+  <ul>
+    <li>Alle Geräte im selben WLAN oder Netzwerk.</li>
+    <li>Zwei normale Heim-WLANs mit üblichen Routern.</li>
+  </ul>
+  <strong>Funktioniert oft nicht</strong>
+  <ul>
+    <li>Ein Gerät nutzt Mobilfunk (die Anbieter teilen sich Adressen, eine direkte Verbindung ist meist unmöglich).</li>
+    <li>Firmen-, Schul-, Hotel- oder Gäste-WLAN mit Firewall oder Geräteisolation.</li>
+    <li>Strenge Router oder Anschlüsse mit gemeinsamer Adresse (z. B. DS-Lite, CGNAT).</li>
+    <li>Aktives VPN oder Blocker, die die Verbindungsdienste sperren (peerjs.com, cdnjs.cloudflare.com).</li>
+    <li>Die Seite wurde nicht über https geöffnet.</li>
+  </ul>
+  <strong>Gut zu wissen</strong>
+  <ul>
+    <li>Mindestens ein Gerät muss die Gruppe geöffnet lassen. Wer zuerst da ist, vermittelt, und verlässt er die Gruppe, übernimmt ein anderes Gerät.</li>
+    <li>Der Chatverlauf wird nicht gespeichert, wer neu beitritt, sieht ihn nicht.</li>
+    <li>Wenn es nicht klappt: Alle ins selbe WLAN gehen oder den Hotspot eines Handys nutzen, dann ist es dasselbe Netz.</li>
+  </ul>
+  <div class="dlg-actions"><button class="btn primary" id="helpClose" type="button">Schließen</button></div>
+</dialog>
 
-function push(el){
-  const box = $('msgs');
-  const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-  box.append(el);
-  if(atEnd) box.scrollTop = box.scrollHeight;
+<script>
+(() => {
+'use strict';
+
+/* ---------- Konstanten & Helfer ---------- */
+const KEY = 'lanchat.v2';
+const CH = 32 * 1024;                 // Chunk-Größe für Dateien
+const MAXFILE = 50 * 1024 * 1024;     // max. Dateigröße (50 MB)
+const IMG_OK = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const PEER_OPTS = { debug: 0, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
+const FILE_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+
+const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+const CHEV_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+let ctxEl = null, menuOpenedAt = 0, lastPress = 0;
+const $ = s => document.querySelector(s);
+const enc = new TextEncoder(), dec = new TextDecoder();
+const norm = s => String(s).trim().toLowerCase().replace(/\s+/g, ' ');
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rid = () => hex(crypto.getRandomValues(new Uint8Array(8)));
+const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+const fmtTime = ts => new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+const safeName = n => String(n || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120) || 'datei';
+const cleanName = n => String(n || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 24) || 'Gast';
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
 }
-function addMsg(text, who, me){
-  const d = document.createElement('div'); d.className = 'm' + (me ? ' me' : '');
-  const n = document.createElement('div'); n.className = 'n'; n.textContent = who;
-  const t = document.createElement('div'); t.textContent = text;
-  d.append(n, t); push(d);
-}
-function sys(text, node){
-  const d = document.createElement('div'); d.className = 'sys'; d.textContent = text;
-  if(node) d.append(' ', node);
-  push(d);
-}
-function updateStatus(){
-  const list = Object.values(names);
-  $('status').textContent = list.length
-    ? `Online (${list.length + 1}): du, ` + list.join(', ')
-    : 'Online (1): nur du – warte auf Mitglieder …';
-}
-
-// Safari gibt lokale Netzwerk-Adressen nur frei, wenn einmal Mikrofonzugriff erlaubt wurde (es wird nichts aufgenommen).
-$('mic').onclick = async () => {
-  try{
-    const st = await navigator.mediaDevices.getUserMedia({audio: true});
-    st.getTracks().forEach(t => t.stop());
-    $('mic').textContent = '✔ Freigeschaltet';
-  }catch(e){ $('mic').textContent = '✘ Nicht möglich'; }
-};
-
-$('join').onclick = join;
-['name','group','pw'].forEach(i => $(i).addEventListener('keydown', e => { if(e.key === 'Enter') join(); }));
-
-function join(){
-  const name = $('name').value.trim();
-  const group = $('group').value.trim().toLowerCase();
-  const pw = $('pw').value;
-  if(!name || !group || !pw){ $('err').textContent = 'Bitte alle drei Felder ausfüllen.'; return; }
-  myName = name;
-
-  room = joinRoom(Object.assign({appId: 'swapchat-github-v8', password: pw}, TURN.length ? {turnConfig: TURN} : {}), 'g:' + group);
-
-  const me = selfId;
-  const [sendEnv, onEnv]           = room.makeAction('env');
-  const [sendFile, onFile, onProg] = room.makeAction('file');
-
-  // ---- Überlagertes Netz: Nachrichten laufen bei Bedarf über andere Teilnehmer weiter ----
-  const direct = new Set();      // direkt verbundene Teilnehmer
-  const route = {};              // Ziel -> direkter Nachbar, über den es erreichbar ist
-  const lastSeen = {};           // Teilnehmer -> letzter Kontakt
-  const sigs = {};               // Teilnehmer -> Signatur (Name+Angebote), um unnötiges Neuzeichnen zu vermeiden
-  const seenIds = new Set();
-  const outFlight = new Set();
-  const lastProg = {};
-  const barPct = {};
-
-  const myOfferList = () => [...myFiles].map(([id, f]) => ({id, name: f.name, size: f.size}));
-  const hopFor = x => direct.has(x) ? x : (route[x] && direct.has(route[x]) ? route[x] : null);
-  const mk = (t, extra, to) => Object.assign({id: uid(), from: me, to: to || null, ttl: 8, t}, extra);
-  function remember(id){ seenIds.add(id); if(seenIds.size > 3000) seenIds.delete(seenIds.values().next().value); }
-  function send(env, except){
-    remember(env.id);
-    if(env.to){
-      const h = hopFor(env.to);
-      if(h && h !== except){ sendEnv(env, h); return; }
-    }
-    for(const p of direct) if(p !== except) sendEnv(env, p);
+function linkify(parent, text) {
+  const re = /(https?:\/\/[^\s<>"']+)/g; let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) parent.append(text.slice(last, m.index));
+    const a = el('a', null, m[0]); a.href = m[0]; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    parent.append(a); last = m.index + m[0].length;
   }
-  const announce = () => send(mk('hello', {n: myName, o: myOfferList()}));
-  const pushOffers = () => announce();
+  if (last < text.length) parent.append(text.slice(last));
+}
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3800);
+}
 
-  function setBar(key, frac){
-    const w = Math.max(0, Math.min(100, Math.round(frac * 100)));
-    if(w <= (barPct[key] || 0)) return;
-    barPct[key] = w;
-    const b = bars[key]; if(b) b.style.width = w + '%';
+/* ---------- Krypto ---------- */
+async function sha256hex(str) { return hex(await crypto.subtle.digest('SHA-256', enc.encode(str))); }
+async function groupIdFor(grp) { return 'lc2-' + (await sha256hex('lanchat|' + norm(grp))).slice(0, 40); }
+async function deriveKeys(password, gid) {
+  const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: enc.encode('lanchat-v1|' + gid), iterations: 150000, hash: 'SHA-256' }, base, 512));
+  const key = await crypto.subtle.importKey('raw', bits.slice(0, 32), 'AES-GCM', false, ['encrypt', 'decrypt']);
+  const verifier = hex(await crypto.subtle.digest('SHA-256', bits.slice(32)));
+  return { key, verifier };
+}
+
+/* ---------- Zustand ---------- */
+const App = { groups: new Map(), active: null, lastUser: '', accent: '' };
+
+function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ lastUser: App.lastUser, accent: App.accent })); } catch {} }
+
+/* ---------- Gruppe: Verbindung (Stern-Topologie, Host wird automatisch gewählt) ---------- */
+class Group {
+  constructor(user, name, pw) {
+    this.user = user; this.name = name; this.pw = pw;
+    this.uid = rid(); this.msgs = new Map(); this.compose = null;
+    this.failedTries = 0; this.hintShown = false;
+    this.status = 'connecting'; this.role = null; this.everOnline = false;
+    this.guests = new Set(); this.members = []; this.files = new Map();
+    this.unread = 0; this.q = Promise.resolve(); this.closed = false;
+    this.timers = new Set(); this.peer = null; this.hostConn = null;
+    this.el = el('div', 'msgs'); this.el.hidden = true;
+    $('#msgsWrap').append(this.el);
   }
-  function removeNode(id){
-    if(names[id]) sys(names[id] + ' hat die Gruppe verlassen.');
-    delete names[id]; delete theirOffers[id]; delete lastSeen[id]; delete sigs[id]; delete route[id];
-    renderTheirs(); updateStatus();
+  async init() {
+    this.gid = await groupIdFor(this.name);
+    const k = await deriveKeys(this.pw, this.gid);
+    this.key = k.key; this.verifier = k.verifier;
+    this.start();
+  }
+  online() { return this.status === 'online'; }
+  later(fn, ms) {
+    const t = setTimeout(() => { this.timers.delete(t); if (!this.closed) fn(); }, ms);
+    this.timers.add(t);
+  }
+  teardown() {
+    for (const t of this.timers) clearTimeout(t);
+    this.timers.clear();
+    clearInterval(this.pingTimer); clearInterval(this.sweepTimer);
+    const c = this.hostConn; this.hostConn = null;
+    try { c && c.close(); } catch {}
+    for (const g of this.guests) { try { g.close(); } catch {} }
+    this.guests.clear();
+    const p = this.peer; this.peer = null;
+    try { p && p.destroy(); } catch {}
+  }
+  close() { this.closed = true; this.teardown(); this.el.remove(); }
+
+  setStatus(s) { this.status = s; renderGroups(); if (App.active === this) updateHeader(); }
+  statusText() {
+    if (this.status === 'connecting') return 'Verbinde …';
+    if (this.status === 'error') return 'Verbindungsproblem, neuer Versuch …';
+    return this.members.length + ' online: ' + this.members.join(', ') + (this.role === 'host' ? ' (du bist Host)' : '');
   }
 
-  room.onPeerJoin(p => { direct.add(p); announce(); });
-  room.onPeerLeave(p => {
-    direct.delete(p);
-    for(const k in route) if(route[k] === p) delete route[k];
-    removeNode(p);
-  });
+  start() {
+    this.teardown(); if (this.closed) return;
+    this.role = null; this.setStatus('connecting');
+    const p = new Peer(this.gid, PEER_OPTS); this.peer = p;
+    p.on('open', () => { if (this.peer === p) this.becomeHost(p); });
+    p.on('error', e => {
+      if (this.peer !== p) return;
+      if (e.type === 'unavailable-id' && this.role !== 'host') { this.joinAsGuest(); return; }
+      this.fail(e);
+    });
+  }
+  fail(e) {
+    if (this.closed) return;
+    const was = this.status;
+    this.teardown(); this.setStatus('error');
+    if (was !== 'error') this.showSys('Verbindungsproblem (' + (e && e.type || 'unbekannt') + '). Neuer Versuch …');
+    this.later(() => this.start(), 3000 + Math.random() * 3000);
+  }
+  goOnline() {
+    const first = !this.everOnline; this.everOnline = true; this.failedTries = 0;
+    this.setStatus('online');
+    this.showSys(this.role === 'host'
+      ? (first ? 'Gruppe erstellt. Du vermittelst die Verbindungen, solange dieser Tab offen ist.' : 'Du bist jetzt Host dieser Gruppe.')
+      : (first ? 'Beigetreten.' : 'Wieder verbunden.'));
+  }
 
-  onEnv((env, p) => {
-    if(!env || typeof env.id !== 'string' || typeof env.from !== 'string' || env.from === me || seenIds.has(env.id)) return;
-    remember(env.id);
-    if(env.from !== p) route[env.from] = p;
-    if(names[env.from]) lastSeen[env.from] = Date.now();
-    if(!env.to || env.to === me) handle(env);
-    if(env.to !== me && (env.ttl | 0) > 0) send(Object.assign({}, env, {ttl: env.ttl - 1}), p);
-  });
-
-  async function handle(env){
-    const from = env.from;
-    switch(env.t){
-      case 'hello': {
-        const first = !names[from];
-        const nm = String(env.n || 'Unbekannt').slice(0, 24);
-        const offers = Array.isArray(env.o) ? env.o.slice(0, 200) : [];
-        names[from] = nm; theirOffers[from] = offers; lastSeen[from] = Date.now();
-        if(first){
-          sys(nm + ' ist beigetreten.');
-          if(!env.r) send(mk('hello', {n: myName, o: myOfferList(), r: 1}, from));
+  /* --- als Host --- */
+  becomeHost(p) {
+    this.role = 'host'; this.members = [this.user];
+    p.on('connection', c => { if (this.peer === p) this.onGuest(c); });
+    p.on('disconnected', () => { if (this.peer === p && !p.destroyed) { try { p.reconnect(); } catch {} } });
+    this.sweepTimer = setInterval(() => {
+      for (const c of [...this.guests]) if (Date.now() - c._last > 30000) { try { c.close(); } catch {} }
+    }, 10000);
+    this.goOnline();
+  }
+  onGuest(c) {
+    c._ok = false; c._last = Date.now();
+    const kill = setTimeout(() => { if (!c._ok) { try { c.close(); } catch {} } }, 8000);
+    c.on('data', d => {
+      c._last = Date.now();
+      if (!d || typeof d !== 'object') return;
+      if (!c._ok) {
+        if (d.t === 'hello') {
+          if (d.v === this.verifier) {
+            c._ok = true; clearTimeout(kill); c._name = cleanName(d.name);
+            this.guests.add(c); this.safeSend(c, { t: 'welcome' });
+            this.sys(c._name + ' ist beigetreten.'); this.pushMembers();
+          } else {
+            this.safeSend(c, { t: 'denied' });
+            setTimeout(() => { try { c.close(); } catch {} }, 600);
+          }
         }
-        const sig = nm + JSON.stringify(offers);
-        if(first || sigs[from] !== sig){ sigs[from] = sig; renderTheirs(); }
-        updateStatus();
-        break;
+        return;
       }
-      case 'chat':
-        addMsg(String(env.text).slice(0, 4000), String(env.n || names[from] || 'Unbekannt').slice(0, 24), false);
-        break;
-      case 'want': {
-        const f = myFiles.get(env.fid), hop = hopFor(from);
-        if(!f || !hop) break;
-        sys((names[from] || 'Jemand') + ' holt „' + f.name + '“ ab …');
-        await sendFile(await f.arrayBuffer(), hop, {id: env.fid, name: f.name, type: f.type, src: me, dst: from, h: 0});
-        break;
-      }
-      case 'prog':
-        setBar(env.src + ':' + env.fid, +env.pct || 0);
-        break;
-      case 'bye':
-        removeNode(from);
-        break;
+      if (d.t === 'ping') { this.safeSend(c, { t: 'pong' }); return; }
+      if (d.t === 'e' || d.t === 'f') { this.relay(d, c); this.enqueue(d); }
+    });
+    c.on('close', () => {
+      clearTimeout(kill);
+      if (this.guests.delete(c) && c._ok && !this.closed) { this.sys(c._name + ' hat die Gruppe verlassen.'); this.pushMembers(); }
+    });
+    c.on('error', () => {});
+  }
+  relay(d, from) { for (const g of this.guests) if (g !== from) this.safeSend(g, d); }
+  async sys(text) { this.showSys(text); await this.bcast({ k: 'sys', text, ts: Date.now() }); }
+  async pushMembers() {
+    this.members = [this.user, ...[...this.guests].map(g => g._name)];
+    if (App.active === this) updateHeader();
+    await this.bcast({ k: 'members', list: this.members });
+  }
+
+  /* --- als Gast --- */
+  joinAsGuest() {
+    this.role = 'guest';
+    const old = this.peer; try { old && old.destroy(); } catch {}
+    const p = new Peer(PEER_OPTS); this.peer = p;
+    p.on('open', () => {
+      if (this.peer !== p) return;
+      const c = p.connect(this.gid, { reliable: true }); this.hostConn = c;
+      this.later(() => { if (!this.online()) this.lost(); }, 12000);
+      c.on('open', () => this.safeSend(c, { t: 'hello', name: this.user, v: this.verifier }));
+      c.on('data', d => { if (this.hostConn === c) this.onHostData(d); });
+      c.on('close', () => { if (this.hostConn === c) this.lost(); });
+      c.on('error', () => { if (this.hostConn === c) this.lost(); });
+    });
+    p.on('error', e => {
+      if (this.peer !== p) return;
+      if (e.type === 'peer-unavailable') { this.later(() => this.start(), 1500 + Math.random() * 2000); return; }
+      this.fail(e);
+    });
+    p.on('disconnected', () => { if (this.peer === p && !p.destroyed) { try { p.reconnect(); } catch {} } });
+  }
+  onHostData(d) {
+    if (!d || typeof d !== 'object') return;
+    if (d.t === 'welcome') {
+      this.goOnline(); this.lastPong = Date.now();
+      const c = this.hostConn;
+      this.pingTimer = setInterval(() => {
+        if (Date.now() - this.lastPong > 25000) { this.lost(); return; }
+        this.safeSend(c, { t: 'ping' });
+      }, 8000);
+    } else if (d.t === 'denied') this.denied();
+    else if (d.t === 'pong') this.lastPong = Date.now();
+    else if (d.t === 'e' || d.t === 'f') this.enqueue(d);
+  }
+  lost() {
+    if (this.closed) return;
+    const was = this.status;
+    if (was !== 'online') this.failedTries++;
+    this.teardown(); this.setStatus('connecting');
+    if (was === 'online') this.showSys('Verbindung zum Host verloren. Verbinde neu …');
+    if (this.failedTries >= 2 && !this.hintShown) {
+      this.hintShown = true;
+      this.showSys('Keine Verbindung möglich. Häufige Gründe: Mobilfunk, Firmen-, Schul- oder Gäste-WLAN, VPN oder strenge Router. Details unter „Hilfe“.');
+    }
+    this.later(() => this.start(), 500 + Math.random() * 2500);
+  }
+  denied() {
+    toast('Falsches Passwort für „' + this.name + '“.');
+    const wasActive = App.active === this;
+    this.close(); App.groups.delete(norm(this.name)); save();
+    if (wasActive) activate(App.groups.values().next().value || null); else renderGroups();
+  }
+
+  /* --- Senden / Empfangen --- */
+  safeSend(c, p) { try { c.send(p); } catch {} }
+  transmit(pkt) {
+    if (this.role === 'host') { for (const g of this.guests) this.safeSend(g, pkt); }
+    else if (this.hostConn && this.hostConn.open) this.safeSend(this.hostConn, pkt);
+  }
+  async encryptBytes(u8) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, this.key, u8));
+    const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+    return out.buffer;
+  }
+  async decryptBytes(ab) {
+    const u = new Uint8Array(ab);
+    return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, this.key, u.slice(12)));
+  }
+  async bcast(obj) { this.transmit({ t: 'e', d: await this.encryptBytes(enc.encode(JSON.stringify(obj))) }); }
+  async drain() {
+    const conns = this.role === 'host' ? [...this.guests] : [this.hostConn];
+    for (let i = 0; i < 600; i++) {
+      let busy = false;
+      for (const c of conns) { const dc = c && (c.dataChannel || c._dc); if (dc && dc.bufferedAmount > 2000000) busy = true; }
+      if (!busy) return;
+      await sleep(40);
     }
   }
 
-  onFile(async (data, p, meta) => {
-    if(!meta || !meta.dst) return;
-    if(meta.dst !== me){                       // wir sind nur Zwischenstation
-      const hop = hopFor(meta.dst);
-      if(!hop || hop === p) return;
-      const m2 = Object.assign({}, meta, {h: (meta.h || 0) + 1});
-      const k = m2.src + ':' + m2.id + ':' + m2.h;
-      outFlight.add(k);
-      try{ await sendFile(data, hop, m2); } finally { outFlight.delete(k); }
-      return;
+  async sendText(text, re) {
+    const o = { k: 'msg', id: rid(), uid: this.uid, from: this.user, text, ts: Date.now() };
+    if (re) o.re = re;
+    this.showMsg(o, true);
+    await this.bcast(o);
+  }
+  async editMsg(rec, text) {
+    if (!rec.mine || rec.kind !== 'text' || rec.deleted || text === rec.text) return;
+    this.applyEdit(rec, text);
+    await this.bcast({ k: 'edit', id: rec.id, uid: this.uid, text });
+  }
+  async deleteForAll(rec) {
+    if (!rec.mine || rec.deleted) return;
+    this.applyDelete(rec, true);
+    await this.bcast({ k: 'del', id: rec.id, uid: this.uid });
+  }
+  deleteLocal(rec) {
+    rec.hidden = true; rec.row.remove();
+    if (rec.kind === 'file') this.files.delete(rec.id);
+    if (rec.url) { URL.revokeObjectURL(rec.url); rec.url = null; }
+  }
+  async react(rec, emoji) {
+    if (rec.deleted) return;
+    const cur = rec.reacts.get(this.uid);
+    const next = cur && cur.emoji === emoji ? '' : emoji;
+    this.applyReact(rec, this.uid, this.user, next);
+    await this.bcast({ k: 'react', id: rec.id, uid: this.uid, name: this.user, emoji: next });
+  }
+  async sendFile(file) {
+    if (!this.online()) { toast('Noch nicht verbunden.'); return; }
+    if (file.size === 0) { toast('„' + file.name + '“ ist leer.'); return; }
+    if (file.size > MAXFILE) { toast('„' + file.name + '“ ist größer als 50 MB.'); return; }
+    const fid = rid(), n = Math.ceil(file.size / CH);
+    const meta = { k: 'fmeta', fid, uid: this.uid, from: this.user, name: safeName(file.name), size: file.size, mime: file.type || '', n, ts: Date.now() };
+    const ui = this.fileBubble(meta, true); ui.progress(0);
+    await this.bcast(meta);
+    for (let i = 0; i < n; i++) {
+      if (this.closed || !this.online()) { ui.fail('Abgebrochen: Verbindung verloren'); return; }
+      if (ui.rec.deleted) return;
+      const u8 = new Uint8Array(await file.slice(i * CH, (i + 1) * CH).arrayBuffer());
+      const ct = await this.encryptBytes(u8);
+      await this.drain();
+      this.transmit({ t: 'f', fid, i, d: ct });
+      if (i % 8 === 0 || i === n - 1) ui.progress((i + 1) / n);
     }
-    const url = URL.createObjectURL(new Blob([data], {type: meta.type || 'application/octet-stream'}));
-    const a = document.createElement('a');
-    a.href = url; a.download = meta.name; a.textContent = '↓ ' + meta.name;
-    sys('Datei von ' + (names[meta.src] || 'Unbekannt') + ' erhalten:', a);
-    setBar(meta.src + ':' + meta.id, 1);
-    a.click();
-  });
-
-  onProg((pct, p, meta) => {
-    if(!meta || !meta.id || meta.src === me) return;
-    if(outFlight.has(meta.src + ':' + meta.id + ':' + (meta.h || 0))) return;   // eigener Weitertransport
-    if(meta.dst === me){ setBar(meta.src + ':' + meta.id, (meta.h || 0) > 0 ? 0.5 + pct / 2 : pct); return; }
-    const k = meta.src + meta.id;                                               // wir leiten weiter: Fortschritt an Empfänger melden
-    if(pct < 1 && pct - (lastProg[k] || 0) < 0.05) return;
-    lastProg[k] = pct;
-    send(mk('prog', {fid: meta.id, src: meta.src, pct: pct / 2}, meta.dst));
-  });
-
-  setInterval(announce, 8000);
-  setInterval(() => { const now = Date.now(); for(const id in lastSeen) if(now - lastSeen[id] > 26000) removeNode(id); }, 5000);
-  addEventListener('pagehide', () => send(mk('bye')));
-  window.__leave = () => { send(mk('bye')); setTimeout(() => { room.leave(); location.reload(); }, 150); };
-
-  // Chat
-  $('form').onsubmit = e => {
-    e.preventDefault();
-    const t = $('text').value.trim();
-    if(!t) return;
-    send(mk('chat', {text: t, n: myName}));
-    addMsg(t, myName, true);
-    $('text').value = '';
-  };
-
-  // Dateien anbieten
-  const addFiles = files => {
-    for(const f of files) myFiles.set(uid(), f);
-    renderMine(); pushOffers();
-  };
-  $('drop').onclick = () => $('pick').click();
-  $('pick').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
-  $('drop').ondragover = e => e.preventDefault();
-  $('drop').ondrop = e => { e.preventDefault(); addFiles(e.dataTransfer.files); };
-
-  function renderMine(){
-    const box = $('mine'); box.textContent = '';
-    if(!myFiles.size){ box.innerHTML = '<div class="empty">Noch nichts angeboten.</div>'; return; }
-    for(const [id, f] of myFiles){
-      const row = document.createElement('div'); row.className = 'f';
-      const info = document.createElement('div'); info.className = 'i';
-      const nm = document.createElement('div'); nm.textContent = f.name;
-      const sz = document.createElement('small'); sz.textContent = fmt(f.size);
-      info.append(nm, sz);
-      const b = document.createElement('button'); b.className = 'sec'; b.textContent = 'Entfernen';
-      b.onclick = () => { myFiles.delete(id); renderMine(); pushOffers(); };
-      row.append(info, b); box.append(row);
-    }
+    ui.done(file);
   }
 
-  function renderTheirs(){
-    const box = $('theirs'); box.textContent = '';
-    let any = false;
-    for(const p in theirOffers){
-      for(const o of theirOffers[p]){
-        any = true;
-        const row = document.createElement('div'); row.className = 'f';
-        const info = document.createElement('div'); info.className = 'i';
-        const nm = document.createElement('div'); nm.textContent = o.name;
-        const sz = document.createElement('small'); sz.textContent = fmt(o.size) + ' · von ' + (names[p] || 'Unbekannt');
-        const bar = document.createElement('div'); bar.className = 'bar';
-        const fill = document.createElement('i'); bar.append(fill);
-        bars[p + ':' + o.id] = fill;
-        info.append(nm, sz, bar);
-        const b = document.createElement('button'); b.textContent = 'Holen';
-        const key = p + ':' + o.id;
-        fill.style.width = (barPct[key] || 0) + '%';
-        b.onclick = () => { setBar(key, 0.02); send(mk('want', {fid: o.id}, p)); };
-        row.append(info, b); box.append(row);
+  enqueue(d) { this.q = this.q.then(() => this.handle(d)).catch(() => {}); }
+  byAuthor(o) { const r = this.msgs.get(String(o.id)); return r && !r.deleted && typeof o.uid === 'string' && r.uid === o.uid ? r : null; }
+  async handle(d) {
+    if (d.t === 'e') {
+      let o; try { o = JSON.parse(dec.decode(await this.decryptBytes(d.d))); } catch { return; }
+      if (!o || typeof o !== 'object') return;
+      if (o.k === 'msg') this.onMsg(o);
+      else if (o.k === 'edit') { const r = this.byAuthor(o); if (r && r.kind === 'text' && typeof o.text === 'string') this.applyEdit(r, o.text.slice(0, 5000)); }
+      else if (o.k === 'del') { const r = this.byAuthor(o); if (r) this.applyDelete(r, false); }
+      else if (o.k === 'react') {
+        const r = this.msgs.get(String(o.id));
+        if (r && !r.deleted && typeof o.uid === 'string' && (o.emoji === '' || REACTIONS.includes(o.emoji))) this.applyReact(r, o.uid, cleanName(o.name), o.emoji);
       }
+      else if (o.k === 'sys' && this.role !== 'host') this.showSys(o.text);
+      else if (o.k === 'members' && Array.isArray(o.list)) { this.members = o.list.slice(0, 50).map(cleanName); updateHeader(); }
+      else if (o.k === 'fmeta') this.onFileMeta(o);
+    } else if (d.t === 'f') {
+      let u8; try { u8 = await this.decryptBytes(d.d); } catch { return; }
+      this.onChunk(String(d.fid), d.i, u8);
     }
-    if(!any) box.innerHTML = '<div class="empty">Noch keine Angebote in der Gruppe.</div>';
   }
-  
-  $('login').style.display = 'none';
-  $('app').style.display = 'grid';
-  $('gname').textContent = '🔒 ' + group;
-  renderMine(); renderTheirs(); updateStatus();
-  sys('Nachrichten werden nicht gespeichert – nur wer online ist, empfängt sie.');
-  $('text').focus();
+  onMsg(o) {
+    if (typeof o.id !== 'string' || typeof o.uid !== 'string' || this.msgs.has(o.id)) return;
+    let re = null;
+    if (o.re && typeof o.re === 'object') re = { id: String(o.re.id || ''), from: cleanName(o.re.from), text: String(o.re.text || '').slice(0, 120) };
+    this.showMsg({ id: o.id, uid: o.uid, from: o.from, text: o.text, ts: o.ts, re }, false);
+  }
+  onFileMeta(o) {
+    const maxN = Math.ceil(MAXFILE / CH);
+    if (typeof o.fid !== 'string' || typeof o.uid !== 'string' || this.files.has(o.fid) || this.msgs.has(o.fid)) return;
+    if (!(o.size > 0 && o.size <= MAXFILE) || !Number.isInteger(o.n) || o.n < 1 || o.n > maxN) return;
+    const ui = this.fileBubble(o, false); ui.progress(0);
+    this.files.set(o.fid, { meta: o, chunks: new Array(o.n), got: 0, ui });
+  }
+  onChunk(fid, i, u8) {
+    const f = this.files.get(fid);
+    if (!f || !f.chunks || !Number.isInteger(i) || i < 0 || i >= f.meta.n) return;
+    if (!f.chunks[i]) { f.chunks[i] = u8; f.got++; }
+    f.ui.progress(f.got / f.meta.n);
+    if (f.got === f.meta.n) {
+      const blob = new Blob(f.chunks, { type: String(f.meta.mime || 'application/octet-stream') });
+      f.chunks = null; f.ui.done(blob);
+    }
+  }
+
+  /* --- Nachrichten-Objekte (Bearbeiten, Löschen, Reaktionen) --- */
+  applyEdit(rec, text) {
+    rec.text = text; rec.txtEl.textContent = ''; linkify(rec.txtEl, text);
+    rec.edited = true; rec.editedEl.hidden = false;
+  }
+  applyDelete(rec, byMe) {
+    rec.deleted = true;
+    if (rec.url) { URL.revokeObjectURL(rec.url); rec.url = null; }
+    this.files.delete(rec.id);
+    rec.bodyEl.textContent = '';
+    rec.bodyEl.append(el('div', 'gone', byMe ? '🚫 Du hast diese Nachricht gelöscht' : '🚫 Diese Nachricht wurde gelöscht'));
+    rec.reacts.clear(); this.renderReacts(rec);
+    rec.editedEl.hidden = true; rec.row.classList.add('deleted');
+  }
+  applyReact(rec, uid, name, emoji) {
+    if (emoji) rec.reacts.set(uid, { emoji, name }); else rec.reacts.delete(uid);
+    this.renderReacts(rec);
+  }
+  renderReacts(rec) {
+    const box = rec.reactEl; box.textContent = '';
+    const by = new Map();
+    for (const [uid, r] of rec.reacts) { if (!by.has(r.emoji)) by.set(r.emoji, []); by.get(r.emoji).push({ uid, name: r.name }); }
+    for (const [emoji, list] of by) {
+      const b = el('button', 'rchip' + (list.some(x => x.uid === this.uid) ? ' mine' : ''), emoji + (list.length > 1 ? ' ' + list.length : ''));
+      b.type = 'button'; b.title = list.map(x => x.name).join(', ');
+      b.onclick = () => { if (needOnline(this)) this.react(rec, emoji); };
+      box.append(b);
+    }
+    box.hidden = !by.size;
+  }
+  scrollToMsg(id) {
+    const r = this.msgs.get(id);
+    if (!r || r.hidden) { toast('Die Nachricht ist nicht mehr vorhanden.'); return; }
+    r.row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    r.row.classList.remove('flash'); void r.row.offsetWidth; r.row.classList.add('flash');
+  }
+
+  /* --- Darstellung --- */
+  makeRec(base) {
+    const rec = Object.assign({ reacts: new Map(), deleted: false, hidden: false, edited: false, url: null }, base);
+    const row = el('div', 'row ' + (rec.mine ? 'me' : 'other')), b = el('div', 'bubble');
+    if (!rec.mine) b.append(el('div', 'who', cleanName(rec.from)));
+    rec.bodyEl = el('div', 'body');
+    rec.reactEl = el('div', 'reacts'); rec.reactEl.hidden = true;
+    rec.editedEl = el('span', 'edited', 'bearbeitet'); rec.editedEl.hidden = true;
+    const meta = el('div', 'time'); meta.append(rec.editedEl, el('span', null, fmtTime(rec.ts)));
+    const act = el('button', 'mact'); act.type = 'button'; act.setAttribute('aria-label', 'Nachrichtenmenü'); act.innerHTML = CHEV_SVG;
+    act.onclick = ev => { ev.stopPropagation(); const r = act.getBoundingClientRect(); openMenu(this, rec, r.left + r.width / 2, r.bottom); };
+    b.append(rec.bodyEl, rec.reactEl, meta, act);
+    b.addEventListener('contextmenu', ev => { ev.preventDefault(); if (Date.now() - lastPress < 900) return; openMenu(this, rec, ev.clientX, ev.clientY); });
+    let pt = null;
+    b.addEventListener('touchstart', ev => {
+      const t = ev.touches[0]; clearTimeout(pt);
+      pt = setTimeout(() => { lastPress = Date.now(); openMenu(this, rec, t.clientX, t.clientY); }, 450);
+    }, { passive: true });
+    for (const n of ['touchend', 'touchmove', 'touchcancel']) b.addEventListener(n, () => clearTimeout(pt), { passive: true });
+    row.append(b); rec.row = row; this.msgs.set(rec.id, rec);
+    return rec;
+  }
+  push(node, mine) {
+    const w = this.el, near = w.scrollHeight - w.scrollTop - w.clientHeight < 140;
+    w.append(node);
+    if (App.active === this) { if (near || mine) w.scrollTop = w.scrollHeight; }
+    else if (!mine && node.classList.contains('row')) { this.unread++; renderGroups(); }
+  }
+  stick() { const w = this.el; if (App.active === this && w.scrollHeight - w.scrollTop - w.clientHeight < 420) w.scrollTop = w.scrollHeight; }
+  quoteEl(re) {
+    const q = el('div', 'quote');
+    q.append(el('div', 'qwho', re.from), el('div', 'qtxt', re.text));
+    q.onclick = () => this.scrollToMsg(re.id);
+    return q;
+  }
+  showMsg(o, mine) {
+    const rec = this.makeRec({ id: o.id, uid: o.uid, from: o.from, mine, kind: 'text', text: String(o.text || '').slice(0, 5000), ts: Number(o.ts) || Date.now() });
+    if (o.re) rec.bodyEl.append(this.quoteEl(o.re));
+    rec.txtEl = el('div', 'txt'); linkify(rec.txtEl, rec.text); rec.bodyEl.append(rec.txtEl);
+    this.push(rec.row, mine);
+  }
+  showSys(text) { this.push(el('div', 'sys', String(text).slice(0, 200)), false); }
+  fileBubble(meta, mine) {
+    const rec = this.makeRec({ id: meta.fid, uid: meta.uid, from: meta.from, mine, kind: 'file', name: safeName(meta.name), ts: Number(meta.ts) || Date.now() });
+    const f = el('div', 'file'), ico = el('div', 'fico'); ico.innerHTML = FILE_SVG;
+    const info = el('div', 'finfo'), nm = el('div', 'fname', rec.name), sz = el('div', 'fsize', fmtSize(meta.size));
+    const bar = el('div', 'bar'), fill = el('i'); bar.append(fill);
+    info.append(nm, sz, bar); f.append(ico, info);
+    rec.bodyEl.append(f); this.push(rec.row, mine);
+    return {
+      rec,
+      progress: x => { fill.style.width = Math.round(x * 100) + '%'; sz.textContent = fmtSize(meta.size) + ' · ' + Math.round(x * 100) + ' %'; },
+      done: blob => {
+        if (rec.deleted || rec.hidden) return;
+        bar.remove(); sz.textContent = fmtSize(meta.size);
+        rec.url = URL.createObjectURL(blob);
+        if (IMG_OK.includes(meta.mime)) {
+          const img = el('img', 'preview'); img.alt = rec.name; img.src = rec.url; img.onload = () => this.stick();
+          rec.bodyEl.append(img);
+        }
+        const a = el('a', 'dl', mine ? 'Kopie speichern' : 'Herunterladen');
+        a.href = rec.url; a.download = rec.name; info.append(a); this.stick();
+      },
+      fail: msg => { bar.remove(); sz.textContent = msg; }
+    };
+  }
 }
 
-$('leave').onclick = () => { if(window.__leave) window.__leave(); else location.reload(); };
+/* ---------- UI ---------- */
+function renderGroups() {
+  const nav = $('#groupList'); nav.textContent = '';
+  for (const g of App.groups.values()) {
+    const b = el('button', 'gi' + (App.active === g ? ' active' : '')); b.type = 'button';
+    const av = el('span', 'av', (g.name.trim()[0] || '?').toUpperCase()); av.append(el('span', 'dot ' + g.status));
+    b.append(av, el('span', 'gname', g.name));
+    if (g.unread) b.append(el('span', 'badge', String(g.unread)));
+    b.onclick = () => activate(g);
+    nav.append(b);
+  }
+  if (!App.groups.size) nav.append(el('div', 'tiny pad', 'Noch keine Gruppen.'));
+}
+function updateHeader() {
+  const g = App.active;
+  $('#gTitle').textContent = g ? g.name : 'LAN-Chat';
+  $('#gSub').textContent = g ? g.statusText() : 'Wähle eine Gruppe';
+}
+function activate(g) {
+  closeMenu();
+  if (App.active && App.active !== g && App.active.compose) { if (App.active.compose.mode === 'edit') msgIn.value = ''; App.active.compose = null; }
+  App.active = g;
+  for (const x of App.groups.values()) x.el.hidden = x !== g;
+  if (g) { g.unread = 0; g.el.scrollTop = g.el.scrollHeight; }
+  $('#empty').hidden = !!g; $('#composer').hidden = !g; $('#btnLeave').hidden = !g;
+  updateHeader(); renderGroups(); renderCompose();
+  document.body.classList.remove('drawer');
+  if (g && matchMedia('(min-width:761px)').matches) $('#msgIn').focus();
+}
+async function addGroup(user, name, pw) {
+  const k = norm(name);
+  if (App.groups.has(k)) { activate(App.groups.get(k)); toast('Diese Gruppe ist schon in deiner Liste.'); return; }
+  const g = new Group(user, name.trim(), pw); App.groups.set(k, g); save(); activate(g);
+  try { await g.init(); }
+  catch (e) {
+    g.close(); App.groups.delete(k); save(); activate(App.groups.values().next().value || null);
+    toast('Fehler: ' + (e && e.message || e));
+  }
+}
+function openDlg() {
+  $('#gUser').value = App.lastUser || ''; $('#gName').value = ''; $('#gPw').value = '';
+  $('#dlg').showModal(); ($('#gUser').value ? $('#gName') : $('#gUser')).focus();
+}
+
+
+/* Akzentfarbe (Hell/Dunkel kommt automatisch vom System) */
+const DEF_ACCENT = '#0d6b61';
+const SWATCHES = [['#0d6b61', 'Petrol'], ['#2446d6', 'Blau'], ['#6d4ae0', 'Violett'], ['#c2247a', 'Pink'], ['#d1432f', 'Rot'], ['#c25e0a', 'Orange'], ['#2f8f3a', 'Grün'], ['#4b5b6b', 'Schiefer']];
+const darkMQ = matchMedia('(prefers-color-scheme:dark)');
+function hexToHsl(x) {
+  const n = parseInt(x.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, l = (mx + mn) / 2;
+  const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0; let h = 0;
+  if (d) { h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+  return [Math.round(h), Math.round(s * 100), Math.round(l * 100)];
+}
+function applyAccent() {
+  const st = document.documentElement.style, keys = ['--accent', '--accent-ink', '--accent-soft', '--me', '--me-ink'];
+  if (!App.accent) { keys.forEach(k => st.removeProperty(k)); return; }
+  const dark = darkMQ.matches, [h, s, l] = hexToHsl(App.accent);
+  const hsl = (a, b, c) => 'hsl(' + a + ' ' + b + '% ' + c + '%)';
+  const al = dark ? Math.max(l, 62) : Math.min(l, 42);
+  st.setProperty('--accent', hsl(h, s, al));
+  st.setProperty('--accent-ink', dark ? '#0a1512' : '#ffffff');
+  st.setProperty('--accent-soft', hsl(h, Math.min(s, dark ? 55 : 70), dark ? 20 : 90));
+  st.setProperty('--me', hsl(h, s, dark ? Math.min(l, 38) : al));
+  st.setProperty('--me-ink', '#ffffff');
+}
+function pickAccent(hex) {
+  App.accent = hex.toLowerCase() === DEF_ACCENT ? '' : hex.toLowerCase();
+  applyAccent(); save(); syncColorUi();
+}
+function syncColorUi() {
+  const cur = App.accent || DEF_ACCENT;
+  $('#colorIn').value = cur;
+  for (const b of $('#swatches').children) b.setAttribute('aria-pressed', String(b.dataset.c === cur));
+}
+for (const [hex, name] of SWATCHES) {
+  const b = el('button', 'sw'); b.type = 'button'; b.dataset.c = hex; b.title = name; b.setAttribute('aria-label', name);
+  b.style.setProperty('--c', hex); b.onclick = () => pickAccent(hex);
+  $('#swatches').append(b);
+}
+$('#colorIn').oninput = e => pickAccent(e.target.value);
+$('#colorReset').onclick = () => pickAccent(DEF_ACCENT);
+$('#colorClose').onclick = () => $('#dlgColor').close();
+$('#btnColor').onclick = () => { syncColorUi(); $('#dlgColor').showModal(); };
+darkMQ.addEventListener('change', applyAccent);
+
+$('#btnHelp').onclick = $('#btnHelp2').onclick = $('#btnHelp3').onclick = () => $('#dlgHelp').showModal();
+$('#helpClose').onclick = () => $('#dlgHelp').close();
+$('#btnAdd').onclick = openDlg; $('#btnAdd2').onclick = openDlg;
+$('#dlgCancel').onclick = () => $('#dlg').close();
+$('#dlgForm').onsubmit = async e => {
+  e.preventDefault();
+  const user = cleanName($('#gUser').value), name = $('#gName').value.trim(), pw = $('#gPw').value;
+  if (!$('#gUser').value.trim() || !name || pw.length < 4) { toast('Benutzername, Gruppenname und Passwort (mind. 4 Zeichen) angeben.'); return; }
+  if (!window.crypto || !crypto.subtle) { toast('Verschlüsselung nicht verfügbar. Bitte die Seite über https öffnen.'); return; }
+  if (typeof Peer === 'undefined') { toast('Verbindungsbibliothek konnte nicht geladen werden. Internetverbindung prüfen.'); return; }
+  App.lastUser = user;
+  $('#dlg').close(); $('#gName').value = ''; $('#gPw').value = '';
+  await addGroup(user, name, pw);
+};
+$('#btnLeave').onclick = () => {
+  const g = App.active;
+  if (!g || !confirm('Gruppe „' + g.name + '“ verlassen?')) return;
+  g.close(); App.groups.delete(norm(g.name)); save();
+  activate(App.groups.values().next().value || null);
+};
+$('#btnMenu').onclick = () => document.body.classList.add('drawer');
+$('#scrim').onclick = () => document.body.classList.remove('drawer');
+
+/* Nachrichtenmenü, Antworten, Bearbeiten */
+function closeMenu() { if (ctxEl) { ctxEl.remove(); ctxEl = null; } }
+function needOnline(g) { if (g.online()) return true; toast('Noch nicht verbunden.'); return false; }
+function snippet(rec) { return rec.deleted ? 'Gelöschte Nachricht' : rec.kind === 'file' ? '📎 ' + rec.name : String(rec.text || '').slice(0, 120); }
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); }
+  catch {
+    const a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0';
+    document.body.append(a); a.select(); try { document.execCommand('copy'); } catch {} a.remove();
+  }
+  toast('Kopiert');
+}
+function openMenu(g, rec, px, py) {
+  closeMenu();
+  const m = el('div', 'ctx'); ctxEl = m; menuOpenedAt = Date.now();
+  const item = (label, fn, cls) => {
+    const b = el('button', 'ctx-item' + (cls ? ' ' + cls : ''), label); b.type = 'button';
+    b.onclick = () => { closeMenu(); fn(); }; m.append(b);
+  };
+  if (!rec.deleted) {
+    const bar = el('div', 'ctx-react'), cur = rec.reacts.get(g.uid);
+    for (const e of REACTIONS) {
+      const b = el('button', cur && cur.emoji === e ? 'sel' : null, e); b.type = 'button';
+      b.onclick = () => { closeMenu(); if (needOnline(g)) g.react(rec, e); };
+      bar.append(b);
+    }
+    m.append(bar);
+    item('Antworten', () => startReply(g, rec));
+    if (rec.kind === 'text') item('Kopieren', () => copyText(rec.text));
+    if (rec.mine && rec.kind === 'text') item('Bearbeiten', () => { if (needOnline(g)) startEdit(g, rec); });
+  }
+  item('Für mich löschen', () => g.deleteLocal(rec));
+  if (rec.mine && !rec.deleted) item('Für alle löschen', () => { if (needOnline(g)) g.deleteForAll(rec); }, 'danger');
+  document.body.append(m);
+  const w = m.offsetWidth, h = m.offsetHeight;
+  m.style.left = Math.min(Math.max(8, px - w / 2), innerWidth - w - 8) + 'px';
+  m.style.top = (py + h + 12 > innerHeight ? Math.max(8, py - h - 8) : py + 8) + 'px';
+}
+document.addEventListener('click', e => { if (ctxEl && !ctxEl.contains(e.target) && Date.now() - menuOpenedAt > 450) closeMenu(); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+$('#msgsWrap').addEventListener('scroll', closeMenu, true);
+window.addEventListener('resize', closeMenu);
+
+function renderCompose() {
+  const g = App.active, c = g && g.compose;
+  $('#ctxBar').hidden = !c;
+  if (c) {
+    $('#ctxTitle').textContent = c.mode === 'edit' ? 'Nachricht bearbeiten' : 'Antwort an ' + cleanName(c.rec.from);
+    $('#ctxText').textContent = snippet(c.rec);
+  }
+}
+function cancelCompose() {
+  const g = App.active; if (!g || !g.compose) return;
+  if (g.compose.mode === 'edit') msgIn.value = '';
+  g.compose = null; autoGrow(); renderCompose();
+}
+function startReply(g, rec) { g.compose = { mode: 'reply', rec }; renderCompose(); msgIn.focus(); }
+function startEdit(g, rec) {
+  g.compose = { mode: 'edit', rec }; msgIn.value = rec.text; autoGrow(); renderCompose();
+  msgIn.focus(); msgIn.setSelectionRange(msgIn.value.length, msgIn.value.length);
+}
+
+/* Nachrichten & Dateien senden */
+const msgIn = $('#msgIn');
+function autoGrow() { msgIn.style.height = 'auto'; msgIn.style.height = Math.min(msgIn.scrollHeight, 140) + 'px'; }
+function submitText() {
+  const g = App.active, t = msgIn.value.trim();
+  if (!g || !t) return;
+  if (!g.online()) { toast('Noch nicht verbunden. Einen Moment bitte.'); return; }
+  const c = g.compose;
+  if (c && c.mode === 'edit') g.editMsg(c.rec, t);
+  else g.sendText(t, c && c.mode === 'reply' ? { id: c.rec.id, from: cleanName(c.rec.from), text: snippet(c.rec) } : null);
+  g.compose = null; msgIn.value = ''; autoGrow(); renderCompose();
+}
+async function sendFiles(list) {
+  const g = App.active; if (!g) return;
+  for (const f of list) await g.sendFile(f);
+}
+msgIn.addEventListener('input', autoGrow);
+msgIn.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submitText(); }
+  else if (e.key === 'Escape') cancelCompose();
+});
+$('#ctxCancel').onclick = cancelCompose;
+msgIn.addEventListener('paste', e => {
+  const files = [...(e.clipboardData && e.clipboardData.files || [])];
+  if (files.length) { e.preventDefault(); sendFiles(files); }
+});
+$('#btnSend').onclick = submitText;
+$('#btnAttach').onclick = () => $('#fileIn').click();
+$('#fileIn').onchange = e => { const l = [...e.target.files]; e.target.value = ''; sendFiles(l); };
+
+let dragDepth = 0;
+const hasFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+window.addEventListener('dragenter', e => { if (hasFiles(e) && App.active) { dragDepth++; $('#dropHint').hidden = false; } });
+window.addEventListener('dragleave', e => { if (hasFiles(e)) { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('#dropHint').hidden = true; } });
+window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('drop', e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; $('#dropHint').hidden = true;
+  if (App.active) sendFiles([...e.dataTransfer.files]);
+});
+
+/* ---------- Start ---------- */
+(function init() {
+  const warn = $('#envWarn');
+  if (!window.isSecureContext || !window.crypto || !crypto.subtle) {
+    warn.hidden = false; warn.textContent = 'Diese Seite muss über https (z. B. GitHub Pages) geöffnet werden, sonst ist die Verschlüsselung nicht verfügbar.';
+  } else if (typeof Peer === 'undefined') {
+    warn.hidden = false; warn.textContent = 'Die Verbindungsbibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen und neu laden.';
+  }
+  /* Alte Versionen haben Gruppen samt Passwort gespeichert: entfernen, nur der Benutzername bleibt. */
+  const s = load();
+  try { localStorage.removeItem('lanchat.v1'); } catch {}
+  App.lastUser = s && typeof s.lastUser === 'string' ? cleanName(s.lastUser) : '';
+  App.accent = s && typeof s.accent === 'string' && /^#[0-9a-f]{6}$/i.test(s.accent) ? s.accent : '';
+  applyAccent(); syncColorUi();
+  if (!(s && s.lastUser)) App.lastUser = '';
+  save();
+  renderGroups(); activate(null);
+})();
+})();
 </script>
 </body>
 </html>
