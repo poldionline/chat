@@ -63,7 +63,7 @@
 <div id="app">
   <div id="chatcol">
     <header>
-      <div><b id="gname"></b> <small style="color:var(--mute)">v7</small><div id="status">Verbinde …</div></div>
+      <div><b id="gname"></b> <small style="color:var(--mute)">v8</small><div id="status">Verbinde …</div></div>
       <button class="sec" id="leave">Verlassen</button>
     </header>
     <div id="msgs"></div>
@@ -83,7 +83,11 @@
 </div>
 
 <script type="module">
-import {joinRoom} from 'https://cdn.jsdelivr.net/npm/trystero@0.21/+esm';
+import {joinRoom, selfId} from 'https://cdn.jsdelivr.net/npm/trystero@0.21/+esm';
+
+// Optional: TURN-Server für zusätzliche Sicherheit bei schwierigen Netzen (leer lassen = nur Umweg über andere Teilnehmer)
+// Beispiel: [{urls:'turn:host:3478', username:'user', credential:'pass'}]
+const TURN = [];
 
 const $ = id => document.getElementById(id);
 const fmt = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
@@ -138,62 +142,141 @@ function join(){
   if(!name || !group || !pw){ $('err').textContent = 'Bitte alle drei Felder ausfüllen.'; return; }
   myName = name;
 
-  room = joinRoom({appId: 'swapchat-github-v7', password: pw}, 'g:' + group);
+  room = joinRoom(Object.assign({appId: 'swapchat-github-v8', password: pw}, TURN.length ? {turnConfig: TURN} : {}), 'g:' + group);
 
-  const [sendHello, onHello]       = room.makeAction('hello');
-  const [sendChat, onChat]         = room.makeAction('chat');
-  const [sendOffers, onOffers]     = room.makeAction('offers');
-  const [sendWant, onWant]         = room.makeAction('want');
+  const me = selfId;
+  const [sendEnv, onEnv]           = room.makeAction('env');
   const [sendFile, onFile, onProg] = room.makeAction('file');
 
+  // ---- Überlagertes Netz: Nachrichten laufen bei Bedarf über andere Teilnehmer weiter ----
+  const direct = new Set();      // direkt verbundene Teilnehmer
+  const route = {};              // Ziel -> direkter Nachbar, über den es erreichbar ist
+  const lastSeen = {};           // Teilnehmer -> letzter Kontakt
+  const sigs = {};               // Teilnehmer -> Signatur (Name+Angebote), um unnötiges Neuzeichnen zu vermeiden
+  const seenIds = new Set();
+  const outFlight = new Set();
+  const lastProg = {};
+  const barPct = {};
+
   const myOfferList = () => [...myFiles].map(([id, f]) => ({id, name: f.name, size: f.size}));
-  const pushOffers = to => sendOffers(myOfferList(), to);
+  const hopFor = x => direct.has(x) ? x : (route[x] && direct.has(route[x]) ? route[x] : null);
+  const mk = (t, extra, to) => Object.assign({id: uid(), from: me, to: to || null, ttl: 8, t}, extra);
+  function remember(id){ seenIds.add(id); if(seenIds.size > 3000) seenIds.delete(seenIds.values().next().value); }
+  function send(env, except){
+    remember(env.id);
+    if(env.to){
+      const h = hopFor(env.to);
+      if(h && h !== except){ sendEnv(env, h); return; }
+    }
+    for(const p of direct) if(p !== except) sendEnv(env, p);
+  }
+  const announce = () => send(mk('hello', {n: myName, o: myOfferList()}));
+  const pushOffers = () => announce();
 
-  room.onPeerJoin(p => { sendHello(myName, p); pushOffers(p); });
-  room.onPeerLeave(p => {
-    if(names[p]) sys(names[p] + ' hat die Gruppe verlassen.');
-    delete names[p]; delete theirOffers[p];
+  function setBar(key, frac){
+    const w = Math.max(0, Math.min(100, Math.round(frac * 100)));
+    if(w <= (barPct[key] || 0)) return;
+    barPct[key] = w;
+    const b = bars[key]; if(b) b.style.width = w + '%';
+  }
+  function removeNode(id){
+    if(names[id]) sys(names[id] + ' hat die Gruppe verlassen.');
+    delete names[id]; delete theirOffers[id]; delete lastSeen[id]; delete sigs[id]; delete route[id];
     renderTheirs(); updateStatus();
+  }
+
+  room.onPeerJoin(p => { direct.add(p); announce(); });
+  room.onPeerLeave(p => {
+    direct.delete(p);
+    for(const k in route) if(route[k] === p) delete route[k];
+    removeNode(p);
   });
 
-  onHello((n, p) => {
-    const first = !names[p];
-    names[p] = String(n).slice(0, 24);
-    if(first) sys(names[p] + ' ist beigetreten.');
-    updateStatus(); renderTheirs();
+  onEnv((env, p) => {
+    if(!env || typeof env.id !== 'string' || typeof env.from !== 'string' || env.from === me || seenIds.has(env.id)) return;
+    remember(env.id);
+    if(env.from !== p) route[env.from] = p;
+    if(names[env.from]) lastSeen[env.from] = Date.now();
+    if(!env.to || env.to === me) handle(env);
+    if(env.to !== me && (env.ttl | 0) > 0) send(Object.assign({}, env, {ttl: env.ttl - 1}), p);
   });
 
-  onChat((t, p) => addMsg(String(t), names[p] || 'Unbekannt', false));
+  async function handle(env){
+    const from = env.from;
+    switch(env.t){
+      case 'hello': {
+        const first = !names[from];
+        const nm = String(env.n || 'Unbekannt').slice(0, 24);
+        const offers = Array.isArray(env.o) ? env.o.slice(0, 200) : [];
+        names[from] = nm; theirOffers[from] = offers; lastSeen[from] = Date.now();
+        if(first){
+          sys(nm + ' ist beigetreten.');
+          if(!env.r) send(mk('hello', {n: myName, o: myOfferList(), r: 1}, from));
+        }
+        const sig = nm + JSON.stringify(offers);
+        if(first || sigs[from] !== sig){ sigs[from] = sig; renderTheirs(); }
+        updateStatus();
+        break;
+      }
+      case 'chat':
+        addMsg(String(env.text).slice(0, 4000), String(env.n || names[from] || 'Unbekannt').slice(0, 24), false);
+        break;
+      case 'want': {
+        const f = myFiles.get(env.fid), hop = hopFor(from);
+        if(!f || !hop) break;
+        sys((names[from] || 'Jemand') + ' holt „' + f.name + '“ ab …');
+        await sendFile(await f.arrayBuffer(), hop, {id: env.fid, name: f.name, type: f.type, src: me, dst: from, h: 0});
+        break;
+      }
+      case 'prog':
+        setBar(env.src + ':' + env.fid, +env.pct || 0);
+        break;
+      case 'bye':
+        removeNode(from);
+        break;
+    }
+  }
 
-  onOffers((list, p) => { theirOffers[p] = Array.isArray(list) ? list : []; renderTheirs(); });
-
-  onWant(async (id, p) => {
-    const f = myFiles.get(id);
-    if(!f) return;
-    sys((names[p] || 'Jemand') + ' holt „' + f.name + '“ ab …');
-    await sendFile(await f.arrayBuffer(), p, {id, name: f.name, type: f.type});
-  });
-
-  onProg((pct, p, meta) => {
-    const b = bars[p + ':' + (meta && meta.id)];
-    if(b) b.style.width = Math.round(pct * 100) + '%';
-  });
-
-  onFile((data, p, meta) => {
+  onFile(async (data, p, meta) => {
+    if(!meta || !meta.dst) return;
+    if(meta.dst !== me){                       // wir sind nur Zwischenstation
+      const hop = hopFor(meta.dst);
+      if(!hop || hop === p) return;
+      const m2 = Object.assign({}, meta, {h: (meta.h || 0) + 1});
+      const k = m2.src + ':' + m2.id + ':' + m2.h;
+      outFlight.add(k);
+      try{ await sendFile(data, hop, m2); } finally { outFlight.delete(k); }
+      return;
+    }
     const url = URL.createObjectURL(new Blob([data], {type: meta.type || 'application/octet-stream'}));
     const a = document.createElement('a');
     a.href = url; a.download = meta.name; a.textContent = '↓ ' + meta.name;
-    sys('Datei von ' + (names[p] || 'Unbekannt') + ' erhalten:', a);
-    const b = bars[p + ':' + meta.id]; if(b) b.style.width = '100%';
+    sys('Datei von ' + (names[meta.src] || 'Unbekannt') + ' erhalten:', a);
+    setBar(meta.src + ':' + meta.id, 1);
     a.click();
   });
+
+  onProg((pct, p, meta) => {
+    if(!meta || !meta.id || meta.src === me) return;
+    if(outFlight.has(meta.src + ':' + meta.id + ':' + (meta.h || 0))) return;   // eigener Weitertransport
+    if(meta.dst === me){ setBar(meta.src + ':' + meta.id, (meta.h || 0) > 0 ? 0.5 + pct / 2 : pct); return; }
+    const k = meta.src + meta.id;                                               // wir leiten weiter: Fortschritt an Empfänger melden
+    if(pct < 1 && pct - (lastProg[k] || 0) < 0.05) return;
+    lastProg[k] = pct;
+    send(mk('prog', {fid: meta.id, src: meta.src, pct: pct / 2}, meta.dst));
+  });
+
+  setInterval(announce, 8000);
+  setInterval(() => { const now = Date.now(); for(const id in lastSeen) if(now - lastSeen[id] > 26000) removeNode(id); }, 5000);
+  addEventListener('pagehide', () => send(mk('bye')));
+  window.__leave = () => { send(mk('bye')); setTimeout(() => { room.leave(); location.reload(); }, 150); };
 
   // Chat
   $('form').onsubmit = e => {
     e.preventDefault();
     const t = $('text').value.trim();
     if(!t) return;
-    sendChat(t);
+    send(mk('chat', {text: t, n: myName}));
     addMsg(t, myName, true);
     $('text').value = '';
   };
@@ -238,14 +321,15 @@ function join(){
         bars[p + ':' + o.id] = fill;
         info.append(nm, sz, bar);
         const b = document.createElement('button'); b.textContent = 'Holen';
-        b.onclick = () => { fill.style.width = '2%'; sendWant(o.id, p); };
+        const key = p + ':' + o.id;
+        fill.style.width = (barPct[key] || 0) + '%';
+        b.onclick = () => { setBar(key, 0.02); send(mk('want', {fid: o.id}, p)); };
         row.append(info, b); box.append(row);
       }
     }
     if(!any) box.innerHTML = '<div class="empty">Noch keine Angebote in der Gruppe.</div>';
   }
-  window.renderTheirs = renderTheirs;
-
+  
   $('login').style.display = 'none';
   $('app').style.display = 'grid';
   $('gname').textContent = '🔒 ' + group;
@@ -254,7 +338,7 @@ function join(){
   $('text').focus();
 }
 
-$('leave').onclick = () => { if(room) room.leave(); location.reload(); };
+$('leave').onclick = () => { if(window.__leave) window.__leave(); else location.reload(); };
 </script>
 </body>
 </html>
